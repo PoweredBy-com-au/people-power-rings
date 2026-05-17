@@ -7,10 +7,12 @@ const PASSWORD = "Gregisagoldengod";
 
 export default function PasswordGate({ children }: { children: React.ReactNode }) {
   const [unlocked, setUnlocked] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const [password, setPassword] = useState("");
   const [error, setError] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored === "true") {
       setUnlocked(true);
@@ -28,6 +30,14 @@ export default function PasswordGate({ children }: { children: React.ReactNode }
       setPassword("");
     }
   };
+
+  if (!mounted) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="w-6 h-6 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   if (unlocked) {
     return <>{children}</>;
