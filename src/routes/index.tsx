@@ -1,26 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
+import FitnessRings from "@/components/FitnessRings";
 
 export const Route = createFileRoute("/")({
-  component: Index,
+  component: FitnessRings,
+  head: () => ({
+    meta: [
+      { title: "Activity Rings — People, Technical, Safety, Business" },
+      {
+        name: "description",
+        content:
+          "Apple Fitness-inspired dynamic rings tracking People, Technical, Safety, and Business progress.",
+      },
+    ],
+  }),
 });
-
-// IMPORTANT: Replace this placeholder. For sites with multiple pages (About, Services, Contact, etc.),
-// create separate route files (about.tsx, services.tsx, contact.tsx) — don't put all pages in this file.
-function PlaceholderIndex() {
-  return (
-    <div
-      className="flex min-h-screen items-center justify-center"
-      style={{ backgroundColor: "#fcfbf8" }}
-    >
-      <img
-        data-lovable-blank-page-placeholder="REMOVE_THIS"
-        src="https://cdn.gpteng.co/blank-app-v1.svg"
-        alt="Your app will live here!"
-      />
-    </div>
-  );
-}
-
-function Index() {
-  return <PlaceholderIndex />;
-}
