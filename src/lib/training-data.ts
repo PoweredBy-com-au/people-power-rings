@@ -16,7 +16,10 @@ export type OrgNode = {
   role?: string;
   children?: OrgNode[];
   training?: Training; // only on persons (leaf)
+  manager?: OrgNode; // the person who owns this node (non-leaf only)
 };
+
+export const CURRENT_USER_ID = "ceo-mickey";
 
 // ---- Demo data generator (deterministic) ----
 function rand(seed: number) {
