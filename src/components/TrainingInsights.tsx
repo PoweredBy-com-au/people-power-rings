@@ -1,6 +1,7 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   CATEGORIES,
+  CURRENT_USER_ID,
   Category,
   ORG,
   OrgNode,
@@ -8,8 +9,10 @@ import {
   aggregate,
   countPeople,
   findPath,
+  getManager,
   typeLabel,
 } from "@/lib/training-data";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
 interface RingProps {
   size: number;
