@@ -1,15 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
-import FitnessRings from "@/components/FitnessRings";
+import TrainingInsights from "@/components/TrainingInsights";
 
 export const Route = createFileRoute("/")({
-  component: FitnessRings,
+  component: TrainingInsights,
   head: () => ({
     meta: [
-      { title: "Activity Rings — People, Technical, Safety, Business" },
+      { title: "Training Insights — People, Technical, Safety, Business" },
       {
         name: "description",
         content:
-          "Apple Fitness-inspired dynamic rings tracking People, Technical, Safety, and Business progress.",
+          "Drill into training required vs completed across your org with Apple Fitness-style rings.",
       },
     ],
   }),
