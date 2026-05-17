@@ -1,6 +1,7 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   CATEGORIES,
+  CURRENT_USER_ID,
   Category,
   ORG,
   OrgNode,
@@ -8,8 +9,10 @@ import {
   aggregate,
   countPeople,
   findPath,
+  getManager,
   typeLabel,
 } from "@/lib/training-data";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
 interface RingProps {
   size: number;
@@ -128,13 +131,66 @@ function MiniRings({ training, size = 64 }: { training: Training; size?: number 
   );
 }
 
+function ModuleBreakdown({ training, title }: { training: Training; title: string }) {
+  return (
+    <div className="rounded-2xl p-6 bg-white/5 border border-white/10">
+      <h2 className="text-sm uppercase tracking-widest text-white/50 mb-4">{title}</h2>
+      <div className="grid sm:grid-cols-2 gap-3">
+        {CATEGORIES.map((c) => {
+          const v = training[c.key];
+          const pct = v.required ? Math.round((v.completed / v.required) * 100) : 0;
+          return (
+            <div key={c.key} className="rounded-xl p-4 bg-black/40 border border-white/5">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: c.color }} />
+                  <span className="text-sm">{c.label}</span>
+                </div>
+                <span className="text-sm tabular-nums" style={{ color: c.color }}>
+                  {pct}%
+                </span>
+              </div>
+              <div className="h-1.5 rounded-full bg-white/10 overflow-hidden">
+                <div
+                  className="h-full rounded-full transition-all duration-700"
+                  style={{ width: `${pct}%`, backgroundColor: c.color }}
+                />
+              </div>
+              <div className="mt-2 text-xs text-white/50">
+                {v.completed} of {v.required} required modules completed
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export default function TrainingInsights() {
   const [currentId, setCurrentId] = useState<string>(ORG.id);
   const [activeCategory, setActiveCategory] = useState<Category | null>(null);
+  const [view, setView] = useState<"team" | "individual">("team");
 
   const path = useMemo(() => findPath(ORG, currentId) ?? [ORG], [currentId]);
   const current = path[path.length - 1];
-  const training = useMemo(() => aggregate(current), [current]);
+  const manager = useMemo(() => getManager(current), [current]);
+
+  // Reset view to team whenever focus changes (per-level toggle, but defaults to team).
+  useEffect(() => {
+    setView("team");
+    setActiveCategory(null);
+  }, [currentId]);
+
+  const isPersonFocus = current.type === "person";
+  const showIndividual = view === "individual" && !!manager && !isPersonFocus;
+
+  const heroTraining: Training = useMemo(() => {
+    if (isPersonFocus) return current.training!;
+    if (showIndividual && manager?.training) return manager.training;
+    return aggregate(current);
+  }, [current, manager, showIndividual, isPersonFocus]);
+
   const totalPeople = useMemo(() => countPeople(current), [current]);
 
   const children = current.children ?? [];
@@ -146,32 +202,40 @@ export default function TrainingInsights() {
       const tb = aggregate(b)[activeCategory];
       const pa = ta.required ? ta.completed / ta.required : 0;
       const pb = tb.required ? tb.completed / tb.required : 0;
-      return pa - pb; // lowest compliance first
+      return pa - pb;
     });
   }, [children, activeCategory]);
 
   const overallPct = (() => {
     const tot = CATEGORIES.reduce(
-      (s, c) => ({ r: s.r + training[c.key].required, c: s.c + training[c.key].completed }),
+      (s, c) => ({ r: s.r + heroTraining[c.key].required, c: s.c + heroTraining[c.key].completed }),
       { r: 0, c: 0 },
     );
     return tot.r ? Math.round((tot.c / tot.r) * 100) : 0;
   })();
+
+  const heroLabel = isPersonFocus
+    ? current.name
+    : showIndividual
+      ? `${manager!.name} · personal`
+      : `${current.name} · team`;
 
   return (
     <div className="min-h-screen bg-black text-white p-6 md:p-10">
       <div className="max-w-6xl mx-auto space-y-8">
         {/* Header / Breadcrumb */}
         <div className="space-y-3">
-          <p className="text-xs uppercase tracking-[0.3em] text-white/50">Training Insights</p>
+          <div className="flex items-center justify-between gap-4">
+            <p className="text-xs uppercase tracking-[0.3em] text-white/50">Training Insights</p>
+            <span className="text-[11px] uppercase tracking-widest text-white/40">
+              Signed in as <span className="text-white/70">Mickey Mouse</span>
+            </span>
+          </div>
           <div className="flex flex-wrap items-center gap-2 text-sm">
             {path.map((n, i) => (
               <div key={n.id} className="flex items-center gap-2">
                 <button
-                  onClick={() => {
-                    setCurrentId(n.id);
-                    setActiveCategory(null);
-                  }}
+                  onClick={() => setCurrentId(n.id)}
                   className={`px-2 py-1 rounded-md transition ${
                     i === path.length - 1
                       ? "bg-white/10 text-white"
@@ -184,19 +248,43 @@ export default function TrainingInsights() {
               </div>
             ))}
           </div>
-          <div className="flex items-baseline gap-4">
-            <h1 className="text-3xl md:text-4xl font-semibold tracking-tight">{current.name}</h1>
-            <span className="text-sm text-white/50">
-              {typeLabel(current.type)} · {totalPeople} {totalPeople === 1 ? "person" : "people"}
-            </span>
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-baseline gap-4">
+              <h1 className="text-3xl md:text-4xl font-semibold tracking-tight">{current.name}</h1>
+              <span className="text-sm text-white/50">
+                {typeLabel(current.type)} · {totalPeople} {totalPeople === 1 ? "person" : "people"}
+              </span>
+            </div>
+            {!isPersonFocus && manager && (
+              <ToggleGroup
+                type="single"
+                value={view}
+                onValueChange={(v) => v && setView(v as "team" | "individual")}
+                className="bg-white/5 border border-white/10 rounded-full p-1"
+              >
+                <ToggleGroupItem
+                  value="team"
+                  className="rounded-full px-4 text-xs uppercase tracking-widest data-[state=on]:bg-white data-[state=on]:text-black text-white/60"
+                >
+                  Team
+                </ToggleGroupItem>
+                <ToggleGroupItem
+                  value="individual"
+                  className="rounded-full px-4 text-xs uppercase tracking-widest data-[state=on]:bg-white data-[state=on]:text-black text-white/60"
+                >
+                  Individual
+                </ToggleGroupItem>
+              </ToggleGroup>
+            )}
           </div>
+          <p className="text-xs text-white/40">{heroLabel}</p>
         </div>
 
         {/* Rings + summary */}
         <div className="grid md:grid-cols-[auto_1fr] gap-10 items-center">
           <div className="relative mx-auto">
             <StackedRings
-              training={training}
+              training={heroTraining}
               onRingClick={(c) => setActiveCategory((prev) => (prev === c ? null : c))}
               activeCategory={activeCategory}
             />
@@ -208,7 +296,7 @@ export default function TrainingInsights() {
 
           <div className="grid grid-cols-2 gap-3">
             {CATEGORIES.map((c) => {
-              const v = training[c.key];
+              const v = heroTraining[c.key];
               const pct = v.required ? Math.round((v.completed / v.required) * 100) : 0;
               const isActive = activeCategory === c.key;
               return (
@@ -242,8 +330,8 @@ export default function TrainingInsights() {
           </div>
         </div>
 
-        {/* Drill-down */}
-        {children.length > 0 && (
+        {/* Team view: drill-down children */}
+        {!showIndividual && !isPersonFocus && children.length > 0 && (
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <h2 className="text-sm uppercase tracking-widest text-white/50">
@@ -274,6 +362,7 @@ export default function TrainingInsights() {
                     key={child.id}
                     onClick={() => {
                       if (child.type !== "person") setCurrentId(child.id);
+                      else setCurrentId(child.id);
                     }}
                     className="text-left flex items-center gap-4 rounded-2xl p-4 bg-white/5 border border-white/10 hover:bg-white/[0.08] hover:border-white/20 transition"
                   >
@@ -307,40 +396,22 @@ export default function TrainingInsights() {
           </div>
         )}
 
-        {current.type === "person" && (
-          <div className="rounded-2xl p-6 bg-white/5 border border-white/10">
-            <h2 className="text-sm uppercase tracking-widest text-white/50 mb-4">Module breakdown</h2>
-            <div className="grid sm:grid-cols-2 gap-3">
-              {CATEGORIES.map((c) => {
-                const v = training[c.key];
-                const pct = v.required ? Math.round((v.completed / v.required) * 100) : 0;
-                return (
-                  <div key={c.key} className="rounded-xl p-4 bg-black/40 border border-white/5">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: c.color }} />
-                        <span className="text-sm">{c.label}</span>
-                      </div>
-                      <span className="text-sm tabular-nums" style={{ color: c.color }}>
-                        {pct}%
-                      </span>
-                    </div>
-                    <div className="h-1.5 rounded-full bg-white/10 overflow-hidden">
-                      <div
-                        className="h-full rounded-full transition-all duration-700"
-                        style={{ width: `${pct}%`, backgroundColor: c.color }}
-                      />
-                    </div>
-                    <div className="mt-2 text-xs text-white/50">
-                      {v.completed} of {v.required} required modules completed
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+        {/* Individual view: show the manager's module breakdown */}
+        {showIndividual && manager && (
+          <ModuleBreakdown
+            training={manager.training!}
+            title={`${manager.name} · ${manager.role ?? "Manager"} · module breakdown`}
+          />
+        )}
+
+        {/* Person leaf focus */}
+        {isPersonFocus && current.training && (
+          <ModuleBreakdown training={current.training} title="Module breakdown" />
         )}
       </div>
     </div>
   );
 }
+
+// CURRENT_USER_ID intentionally referenced to keep the demo persona explicit.
+void CURRENT_USER_ID;
