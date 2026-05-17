@@ -46,7 +46,26 @@ const firstNames = ["Ava","Liam","Noah","Mia","Ethan","Zoe","Kai","Eli","Maya","
 const lastNames = ["Reed","Chen","Patel","Kim","Singh","Lopez","Garcia","Khan","Walsh","Yamada","Brooks","Ortiz"];
 const roles = ["Engineer","Analyst","Manager","Specialist","Lead","Coordinator"];
 
+const mgrFirstNames = ["Diana","Marcus","Priya","Hideo","Sofia","Jamal","Elena","Wren","Rashid","Tomoko"];
+const mgrLastNames = ["Vance","Okafor","Sundaram","Tanaka","Marquez","Bennett","Petrov","Aldrich"];
+
 let seedCounter = 1;
+let mgrCounter = 0;
+function makeManager(nodeName: string, type: OrgNode["type"]): OrgNode {
+  const titleByType: Record<OrgNode["type"], string> = {
+    company: "CEO",
+    division: "VP",
+    department: "Director",
+    team: "Manager",
+    person: "",
+  };
+  const fn = mgrFirstNames[mgrCounter % mgrFirstNames.length];
+  const ln = mgrLastNames[mgrCounter % mgrLastNames.length];
+  const id = `mgr-${mgrCounter}`;
+  mgrCounter++;
+  return makePerson(id, `${fn} ${ln}`, `${titleByType[type]}, ${nodeName}`, 7777 + mgrCounter);
+}
+
 function team(name: string, size: number): OrgNode {
   const people: OrgNode[] = [];
   for (let i = 0; i < size; i++) {
@@ -56,23 +75,26 @@ function team(name: string, size: number): OrgNode {
     people.push(makePerson(`p-${seedCounter}-${i}`, `${fn} ${ln}`, role, seedCounter * 100 + i));
   }
   seedCounter++;
-  return { id: `team-${seedCounter}`, name, type: "team", children: people };
+  return { id: `team-${seedCounter}`, name, type: "team", children: people, manager: makeManager(name, "team") };
 }
 
 function dept(name: string, teams: OrgNode[]): OrgNode {
   seedCounter++;
-  return { id: `dept-${seedCounter}`, name, type: "department", children: teams };
+  return { id: `dept-${seedCounter}`, name, type: "department", children: teams, manager: makeManager(name, "department") };
 }
 
 function division(name: string, depts: OrgNode[]): OrgNode {
   seedCounter++;
-  return { id: `div-${seedCounter}`, name, type: "division", children: depts };
+  return { id: `div-${seedCounter}`, name, type: "division", children: depts, manager: makeManager(name, "division") };
 }
+
+const CEO: OrgNode = makePerson(CURRENT_USER_ID, "Mickey Mouse", "CEO, Acme Corporation", 4242);
 
 export const ORG: OrgNode = {
   id: "company",
   name: "Acme Corporation",
   type: "company",
+  manager: CEO,
   children: [
     division("Engineering", [
       dept("Platform", [team("Infrastructure", 6), team("Developer Experience", 5)]),
@@ -86,8 +108,20 @@ export const ORG: OrgNode = {
       dept("Sales", [team("Enterprise", 5), team("SMB", 6)]),
       dept("Marketing", [team("Brand", 4), team("Growth", 4)]),
     ]),
+    division("Finance", [
+      dept("Accounting", [team("AP/AR", 5), team("Controllership", 4)]),
+      dept("FP&A", [team("Corporate FP&A", 4), team("Business Partners", 5)]),
+    ]),
+    division("Human Resources", [
+      dept("People Ops", [team("Talent Acquisition", 5), team("People Partners", 4)]),
+      dept("Learning & Development", [team("L&D Programs", 4), team("Compliance Training", 3)]),
+    ]),
   ],
 };
+
+export function getManager(node: OrgNode): OrgNode | undefined {
+  return node.type === "person" ? node : node.manager;
+}
 
 // ---- Aggregation ----
 export function aggregate(node: OrgNode): Training {
