@@ -1,11 +1,18 @@
 import { createFileRoute } from "@tanstack/react-router";
 import TrainingInsights from "@/components/TrainingInsights";
 import PasswordGate from "@/components/PasswordGate";
+import OnboardingWizard, { useOnboarding } from "@/components/OnboardingWizard";
 
 function IndexPage() {
+  const { mounted, done, markDone } = useOnboarding();
+
   return (
     <PasswordGate>
-      <TrainingInsights />
+      {!mounted ? null : !done ? (
+        <OnboardingWizard onComplete={markDone} />
+      ) : (
+        <TrainingInsights />
+      )}
     </PasswordGate>
   );
 }
