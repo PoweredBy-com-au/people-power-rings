@@ -1,10 +1,10 @@
 export type Category = "people" | "technical" | "safety" | "business";
 
 export const CATEGORIES: { key: Category; label: string; color: string; track: string }[] = [
-  { key: "people", label: "People", color: "#fa114f", track: "rgba(250,17,79,0.18)" },
-  { key: "technical", label: "Technical", color: "#92e82a", track: "rgba(146,232,42,0.18)" },
-  { key: "safety", label: "Safety", color: "#1ad5fd", track: "rgba(26,213,253,0.18)" },
-  { key: "business", label: "Business", color: "#f5a623", track: "rgba(245,166,35,0.18)" },
+  { key: "people", label: "People", color: "#e8487f", track: "rgba(232,72,127,0.18)" },
+  { key: "technical", label: "Technical", color: "#8b5cf6", track: "rgba(139,92,246,0.18)" },
+  { key: "safety", label: "Safety", color: "#14b8a6", track: "rgba(20,184,166,0.18)" },
+  { key: "business", label: "Business", color: "#f59e0b", track: "rgba(245,158,11,0.18)" },
 ];
 
 export type Training = Record<Category, { required: number; completed: number }>;
