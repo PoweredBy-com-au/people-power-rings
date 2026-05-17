@@ -10,10 +10,10 @@ type RingData = {
 };
 
 const RING_CONFIG: Omit<RingData, "value">[] = [
-  { label: "People", goal: 100, color: "#fa114f", trackColor: "rgba(250,17,79,0.18)", unit: "%" },
-  { label: "Technical", goal: 100, color: "#92e82a", trackColor: "rgba(146,232,42,0.18)", unit: "%" },
-  { label: "Safety", goal: 100, color: "#1ad5fd", trackColor: "rgba(26,213,253,0.18)", unit: "%" },
-  { label: "Business", goal: 100, color: "#f5a623", trackColor: "rgba(245,166,35,0.18)", unit: "%" },
+  { label: "People", goal: 100, color: "#e8487f", trackColor: "rgba(232,72,127,0.18)", unit: "%" },
+  { label: "Technical", goal: 100, color: "#8b5cf6", trackColor: "rgba(139,92,246,0.18)", unit: "%" },
+  { label: "Safety", goal: 100, color: "#14b8a6", trackColor: "rgba(20,184,166,0.18)", unit: "%" },
+  { label: "Business", goal: 100, color: "#f59e0b", trackColor: "rgba(245,158,11,0.18)", unit: "%" },
 ];
 
 interface RingProps {
