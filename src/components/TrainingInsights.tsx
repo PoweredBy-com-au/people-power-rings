@@ -303,10 +303,26 @@ export default function TrainingInsights() {
               onRingClick={(c) => setActiveCategory((prev) => (prev === c ? null : c))}
               activeCategory={activeCategory}
             />
-            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-              <span className="text-4xl font-semibold tabular-nums">{overallPct}%</span>
-              <span className="text-xs uppercase tracking-widest text-white/40">Completed</span>
-            </div>
+            {path.length > 1 ? (
+              <button
+                onClick={() => setCurrentId(path[path.length - 2].id)}
+                className="absolute inset-0 flex flex-col items-center justify-center rounded-full group"
+                style={{ width: 140, height: 140, left: "50%", top: "50%", transform: "translate(-50%, -50%)" }}
+                title={`Up to ${path[path.length - 2].name}`}
+                aria-label={`Up to ${path[path.length - 2].name}`}
+              >
+                <span className="text-4xl font-semibold tabular-nums">{overallPct}%</span>
+                <span className="text-xs uppercase tracking-widest text-white/40">Completed</span>
+                <span className="mt-1 text-[10px] uppercase tracking-widest text-white/30 group-hover:text-white/70 transition">
+                  ↑ Up to {path[path.length - 2].name}
+                </span>
+              </button>
+            ) : (
+              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                <span className="text-4xl font-semibold tabular-nums">{overallPct}%</span>
+                <span className="text-xs uppercase tracking-widest text-white/40">Completed</span>
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-3">
