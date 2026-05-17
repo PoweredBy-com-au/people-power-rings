@@ -231,22 +231,37 @@ export default function TrainingInsights() {
               Signed in as <span className="text-white/70">Mickey Mouse</span>
             </span>
           </div>
-          <div className="flex flex-wrap items-center gap-2 text-sm">
-            {path.map((n, i) => (
-              <div key={n.id} className="flex items-center gap-2">
-                <button
-                  onClick={() => setCurrentId(n.id)}
-                  className={`px-2 py-1 rounded-md transition ${
-                    i === path.length - 1
-                      ? "bg-white/10 text-white"
-                      : "text-white/60 hover:text-white hover:bg-white/5"
-                  }`}
-                >
-                  {n.name}
-                </button>
-                {i < path.length - 1 && <span className="text-white/30">/</span>}
-              </div>
-            ))}
+          {/* Up navigation: prominent Back + breadcrumb trail */}
+          <div className="flex flex-wrap items-center gap-3">
+            {path.length > 1 && (
+              <button
+                onClick={() => setCurrentId(path[path.length - 2].id)}
+                className="group inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-sm text-white/80 hover:bg-white/10 hover:border-white/30 transition"
+                aria-label={`Back to ${path[path.length - 2].name}`}
+              >
+                <span className="text-lg leading-none transition group-hover:-translate-x-0.5">←</span>
+                <span className="text-xs uppercase tracking-widest text-white/50">Back to</span>
+                <span className="font-medium">{path[path.length - 2].name}</span>
+              </button>
+            )}
+            <div className="flex flex-wrap items-center gap-1 text-sm">
+              {path.map((n, i) => (
+                <div key={n.id} className="flex items-center gap-1">
+                  <button
+                    onClick={() => setCurrentId(n.id)}
+                    className={`px-2 py-1 rounded-md transition ${
+                      i === path.length - 1
+                        ? "bg-white/10 text-white"
+                        : "text-white/60 hover:text-white hover:bg-white/10 underline-offset-4 hover:underline"
+                    }`}
+                    title={i < path.length - 1 ? `Jump to ${n.name}` : undefined}
+                  >
+                    {n.name}
+                  </button>
+                  {i < path.length - 1 && <span className="text-white/30">›</span>}
+                </div>
+              ))}
+            </div>
           </div>
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="flex items-baseline gap-4">
