@@ -297,32 +297,28 @@ export default function TrainingInsights() {
 
         {/* Rings + summary */}
         <div className="grid md:grid-cols-[auto_1fr] gap-10 items-center">
-          <div className="relative mx-auto">
-            <StackedRings
-              training={heroTraining}
-              onRingClick={(c) => setActiveCategory((prev) => (prev === c ? null : c))}
-              activeCategory={activeCategory}
-            />
-            {path.length > 1 ? (
+          <div className="flex flex-col items-center gap-3 mx-auto">
+            {path.length > 1 && (
               <button
                 onClick={() => setCurrentId(path[path.length - 2].id)}
-                className="absolute inset-0 flex flex-col items-center justify-center rounded-full group"
-                style={{ width: 140, height: 140, left: "50%", top: "50%", transform: "translate(-50%, -50%)" }}
-                title={`Up to ${path[path.length - 2].name}`}
-                aria-label={`Up to ${path[path.length - 2].name}`}
+                className="group inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-4 py-1.5 text-xs uppercase tracking-widest text-white/70 hover:bg-white/10 hover:text-white hover:border-white/30 transition"
+                aria-label={`Go back to ${path[path.length - 2].name}`}
               >
-                <span className="text-4xl font-semibold tabular-nums">{overallPct}%</span>
-                <span className="text-xs uppercase tracking-widest text-white/40">Completed</span>
-                <span className="mt-1 text-[10px] uppercase tracking-widest text-white/30 group-hover:text-white/70 transition">
-                  ↑ Up to {path[path.length - 2].name}
-                </span>
+                <span className="text-base leading-none transition group-hover:-translate-x-0.5">←</span>
+                <span>Go back to {path[path.length - 2].name}</span>
               </button>
-            ) : (
+            )}
+            <div className="relative">
+              <StackedRings
+                training={heroTraining}
+                onRingClick={(c) => setActiveCategory((prev) => (prev === c ? null : c))}
+                activeCategory={activeCategory}
+              />
               <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                 <span className="text-4xl font-semibold tabular-nums">{overallPct}%</span>
                 <span className="text-xs uppercase tracking-widest text-white/40">Completed</span>
               </div>
-            )}
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
