@@ -393,7 +393,7 @@ function TeamView({
         </div>
       )}
 
-      {canTeam && (
+      {mode === "team" && canTeam && (
         <div className="mt-5 rounded-2xl border border-slate-800 bg-slate-900">
           <button
             onClick={() => setInferOpen((v) => !v)}
