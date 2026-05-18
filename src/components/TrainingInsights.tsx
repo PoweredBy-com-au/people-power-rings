@@ -448,7 +448,7 @@ function TeamView({
         </div>
       )}
 
-      {canTeam && (
+      {mode === "team" && canTeam && (
         <div className="mt-6">
           <h2 className="text-sm uppercase tracking-wide text-slate-500 mb-2">
             Team — worst first
