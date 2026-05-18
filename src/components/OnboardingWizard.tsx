@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 
-const STORAGE_KEY = "scf_onboarding_complete_v2";
+const STORAGE_KEY = "scf_onboarding_complete_v3";
 
 type Slide = {
   eyebrow?: string;
