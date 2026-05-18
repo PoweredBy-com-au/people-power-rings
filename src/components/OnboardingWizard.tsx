@@ -354,7 +354,7 @@ export default function OnboardingWizard({ onComplete }: { onComplete: () => voi
           onClick={next}
           className="bg-white text-black hover:bg-white/90 font-medium min-w-[120px]"
         >
-          {index === total - 1 ? "Enter tool" : "Next"}
+          {index === total - 1 ? "Continue" : "Next"}
         </Button>
       </div>
     </div>
