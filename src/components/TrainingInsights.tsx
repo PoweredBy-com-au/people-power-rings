@@ -494,6 +494,8 @@ function TeamView({
   );
 }
 
+/* -------------------- PersonView -------------------- */
+
 function PersonView({ studentId }: { studentId: string }) {
   const person = getPersonById(studentId);
   const canTeam = !!(person && person.hasTeam && person.teamStats != null);
