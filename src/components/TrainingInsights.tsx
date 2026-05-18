@@ -1,16 +1,22 @@
 import { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, Info, SlidersHorizontal, X } from "lucide-react";
+import { getRouteApi, useNavigate } from "@tanstack/react-router";
 import Ring from "./Ring";
 import PersonCard from "./PersonCard";
 import {
   data,
   effectiveStats,
   getPersonById,
+  getDirectReports,
+  getTeamCompositionFor,
+  aggregateInferredFor,
   type Person,
   type PersonItem,
   type Stats,
   type Viewer,
 } from "@/lib/training-data";
+
+const routeApi = getRouteApi("/");
 
 type View =
   | { kind: "team"; ownerId: string }
@@ -121,13 +127,41 @@ export default function TrainingInsights() {
   const [stack, setStack] = useState<View[]>([
     { kind: "team", ownerId: String(data.viewer.studentId) },
   ]);
-  const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
   const [filterOpen, setFilterOpen] = useState(false);
+  const search = routeApi.useSearch();
+  const navigate = useNavigate({ from: "/" });
+
+  const filters: Filters = {
+    site: search.site,
+    org: search.org,
+    type: search.type,
+  };
+
+  const setFilters = (f: Filters) =>
+    navigate({
+      search: () => ({ site: f.site, org: f.org, type: f.type }),
+      replace: true,
+    });
+
+  const resetFilters = () =>
+    navigate({
+      search: () => ({ site: "all", org: "all", type: "all" as const }),
+      replace: true,
+    });
 
   const current = stack[stack.length - 1];
-  const push = (v: View) => setStack((s) => [...s, v]);
-  const popTo = (i: number) => setStack((s) => s.slice(0, i + 1));
-  const back = () => setStack((s) => (s.length > 1 ? s.slice(0, -1) : s));
+  const push = (v: View) => {
+    setStack((s) => [...s, v]);
+    resetFilters();
+  };
+  const popTo = (i: number) => {
+    setStack((s) => s.slice(0, i + 1));
+    resetFilters();
+  };
+  const back = () => {
+    setStack((s) => (s.length > 1 ? s.slice(0, -1) : s));
+    resetFilters();
+  };
 
   const filterCount = activeFilterCount(filters);
 
@@ -195,7 +229,7 @@ export default function TrainingInsights() {
             setFilterOpen(false);
           }}
           onClear={() => {
-            setFilters(DEFAULT_FILTERS);
+            resetFilters();
             setFilterOpen(false);
           }}
         />
@@ -224,9 +258,10 @@ function TeamView({
   const [notesOpen, setNotesOpen] = useState(false);
 
   const hasFilters = activeFilterCount(filters) > 0;
+  const directReports = useMemo(() => getDirectReports(ownerId), [ownerId]);
   const filteredPeople = useMemo(
-    () => (isViewer ? applyFilters(data.people, filters) : data.people),
-    [isViewer, filters],
+    () => applyFilters(directReports, filters),
+    [directReports, filters],
   );
   const sortedPeople = useMemo(
     () =>
@@ -236,15 +271,45 @@ function TeamView({
     [filteredPeople],
   );
 
+  const composition = useMemo(
+    () =>
+      isViewer && data.viewer.teamComposition
+        ? data.viewer.teamComposition
+        : getTeamCompositionFor(ownerId),
+    [ownerId, isViewer],
+  );
+
+  const inferred = useMemo(() => {
+    if (isViewer) {
+      return {
+        tnaGapTotal: data.inferredFacts.tnaGapTotal,
+        tnaRequiredItemsUnion: data.inferredFacts.tnaRequiredItemsUnion,
+        confidence: data.inferredFacts.confidence,
+        notes: data.inferredFacts.confidenceNotes,
+      };
+    }
+    const agg = aggregateInferredFor(ownerId);
+    return {
+      tnaGapTotal: agg.tnaGapTotal,
+      tnaRequiredItemsUnion: agg.tnaRequiredItemsUnion,
+      confidence: agg.confidence,
+      notes: [
+        `${agg.matched} / ${agg.total} reports matched to TNA exactly.`,
+        `${agg.fuzzy} matched with a small spelling difference.`,
+        `${agg.none} are not listed on any TNA sheet.`,
+        "Inferred numbers aggregated from direct reports only.",
+      ],
+    };
+  }, [ownerId, isViewer]);
+
   if (!owner) return <div className="text-slate-400">Owner not found.</div>;
 
   const canTeam = owner.hasTeam && owner.teamStats != null;
 
-  // Team stats: when filters active on viewer team, recompute from filtered people
-  const teamStats: Stats | null =
-    isViewer && hasFilters
-      ? aggregateStats(filteredPeople)
-      : owner.teamStats;
+  // Team stats: when filters active, recompute from filtered direct reports
+  const teamStats: Stats | null = hasFilters
+    ? aggregateStats(filteredPeople)
+    : owner.teamStats;
 
   const stats: Stats =
     mode === "team" && teamStats ? teamStats : owner.personalStats;
@@ -252,7 +317,7 @@ function TeamView({
   const firstName = owner.fullName.split(" ")[0];
   const sublabel =
     mode === "team"
-      ? hasFilters && isViewer
+      ? hasFilters
         ? `team of ${filteredPeople.length}`
         : `team of ${owner.teamSize}`
       : isViewer
@@ -291,16 +356,15 @@ function TeamView({
         <BigStat value={stats.incomplete} label="incomplete" />
       </div>
 
-      {isViewer && mode === "team" && data.viewer.teamComposition && (
+      {mode === "team" && canTeam && (composition.employees + composition.contractors > 0) && (
         <div className="mt-3 flex justify-center">
           <span className="inline-flex items-center gap-2 rounded-full bg-slate-900 border border-slate-800 px-3 py-1 text-xs text-slate-400">
-            {data.viewer.teamComposition.employees} Employees ·{" "}
-            {data.viewer.teamComposition.contractors} Contractors
+            {composition.employees} Employees · {composition.contractors} Contractors
           </span>
         </div>
       )}
 
-      {isViewer && (
+      {canTeam && (
         <div className="mt-5 rounded-2xl border border-slate-800 bg-slate-900">
           <button
             onClick={() => setInferOpen((v) => !v)}
@@ -308,7 +372,7 @@ function TeamView({
           >
             <span className="text-sm text-slate-200">
               Inferred from the TNA — confidence:{" "}
-              <span className="font-medium">{data.inferredFacts.confidence}</span>
+              <span className="font-medium">{inferred.confidence}</span>
             </span>
             <ChevronRight
               className={`h-4 w-4 text-slate-500 transition-transform ${inferOpen ? "rotate-90" : ""}`}
@@ -319,13 +383,13 @@ function TeamView({
               <div className="grid grid-cols-2 gap-3">
                 <div className="rounded-xl bg-slate-950 border border-slate-800 p-3">
                   <div className="text-lg font-semibold text-slate-100">
-                    {data.inferredFacts.tnaRequiredItemsUnion}
+                    {inferred.tnaRequiredItemsUnion}
                   </div>
                   <div className="text-xs text-slate-400">TNA suggests required</div>
                 </div>
                 <div className="rounded-xl bg-slate-950 border border-slate-800 p-3">
                   <div className="text-lg font-semibold text-slate-100">
-                    {data.inferredFacts.tnaGapTotal}
+                    {inferred.tnaGapTotal}
                   </div>
                   <div className="text-xs text-slate-400">total inferred gap</div>
                 </div>
@@ -345,7 +409,7 @@ function TeamView({
               </button>
               {notesOpen && (
                 <ul className="space-y-1 text-xs text-slate-400">
-                  {data.inferredFacts.confidenceNotes.map((n, i) => (
+                  {inferred.notes.map((n, i) => (
                     <li key={i}>• {n}</li>
                   ))}
                 </ul>
@@ -355,13 +419,13 @@ function TeamView({
         </div>
       )}
 
-      {isViewer && (
+      {canTeam && (
         <div className="mt-6">
           <h2 className="text-sm uppercase tracking-wide text-slate-500 mb-2">
             Team — worst first
             {hasFilters && (
               <span className="ml-2 normal-case text-slate-400">
-                ({filteredPeople.length} of {data.people.length})
+                ({filteredPeople.length} of {directReports.length})
               </span>
             )}
           </h2>

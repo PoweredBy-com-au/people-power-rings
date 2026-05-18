@@ -1,8 +1,18 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, stripSearchParams } from "@tanstack/react-router";
+import { zodValidator, fallback } from "@tanstack/zod-adapter";
+import { z } from "zod";
 import { useEffect, useState } from "react";
 import PasswordGate from "@/components/PasswordGate";
 import OnboardingWizard, { isOnboardingDone } from "@/components/OnboardingWizard";
 import TrainingInsights from "@/components/TrainingInsights";
+
+const FILTER_DEFAULTS = { site: "all", org: "all", type: "all" as const };
+
+const searchSchema = z.object({
+  site: fallback(z.string(), "all").default("all"),
+  org: fallback(z.string(), "all").default("all"),
+  type: fallback(z.enum(["all", "Employee", "Contractor"]), "all").default("all"),
+});
 
 function App() {
   const [ready, setReady] = useState(false);
@@ -27,6 +37,8 @@ function App() {
 }
 
 export const Route = createFileRoute("/")({
+  validateSearch: zodValidator(searchSchema),
+  search: { middlewares: [stripSearchParams(FILTER_DEFAULTS)] },
   component: App,
   head: () => ({
     meta: [

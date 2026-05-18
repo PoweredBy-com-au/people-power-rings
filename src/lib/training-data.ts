@@ -44,6 +44,8 @@ export interface Person {
   contractorType: string | null;
   isContractor?: boolean;
   hireDate: string | null;
+  level: number;
+  managedById: number | string;
   hasTeam: boolean;
   teamSize: number;
   teamStats: Stats | null;
@@ -81,6 +83,13 @@ export interface AppData {
     sites: string[];
     distinctItemsRequired: number;
   };
+  orgTree?: {
+    label: string;
+    totalPeople: number;
+    maxDepth: number;
+    peoplePerLevel: Record<string, number>;
+    rootViewerStudentId: number;
+  };
   inferredFacts: {
     scope: string;
     tnaRequiredItemsUnion: number;
@@ -115,6 +124,62 @@ export function getData(): AppData {
 
 export function getPersonById(id: number | string): Person | undefined {
   return data.people.find((p) => String(p.studentId) === String(id));
+}
+
+export function getDirectReports(ownerId: number | string): Person[] {
+  const key = String(ownerId);
+  return data.people.filter((p) => String(p.managedById) === key);
+}
+
+export function getTeamCompositionFor(
+  ownerId: number | string,
+): { employees: number; contractors: number } {
+  const reports = getDirectReports(ownerId);
+  let employees = 0;
+  let contractors = 0;
+  for (const p of reports) {
+    if (p.personType === "Contractor") contractors++;
+    else employees++;
+  }
+  return { employees, contractors };
+}
+
+export function aggregateInferredFor(ownerId: number | string): {
+  tnaGapTotal: number;
+  tnaRequiredItemsUnion: number;
+  confidence: "high" | "medium" | "low";
+  matched: number;
+  fuzzy: number;
+  none: number;
+  total: number;
+} {
+  const reports = getDirectReports(ownerId);
+  const total = reports.length;
+  let matched = 0;
+  let fuzzy = 0;
+  let none = 0;
+  let tnaGapTotal = 0;
+  const itemUnion = new Set<string>();
+  for (const p of reports) {
+    tnaGapTotal += p.tnaGap || 0;
+    if (p.tnaNameMatch === "exact") matched++;
+    else if (typeof p.tnaNameMatch === "string" && p.tnaNameMatch.startsWith("fuzzy")) fuzzy++;
+    else none++;
+    for (const it of p.items) itemUnion.add(it.itemId);
+  }
+  const matchedRatio = total ? matched / total : 0;
+  const partialRatio = total ? (matched + fuzzy) / total : 0;
+  const confidence: "high" | "medium" | "low" =
+    matchedRatio >= 0.66 ? "high" : partialRatio >= 0.5 ? "medium" : "low";
+  return {
+    tnaGapTotal,
+    tnaRequiredItemsUnion: itemUnion.size,
+    confidence,
+    matched,
+    fuzzy,
+    none,
+    total,
+  };
 }
 
 export function getRisksByTier(tier: RiskTier): RiskItem[] {
