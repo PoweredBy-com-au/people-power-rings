@@ -1,248 +1,154 @@
-export type Category = "people" | "technical" | "safety" | "business";
+import raw from "@/data/dan_team_data.json";
 
-export const CATEGORIES: { key: Category; label: string; color: string; track: string }[] = [
-  { key: "people", label: "People", color: "#e8487f", track: "rgba(232,72,127,0.18)" },
-  { key: "technical", label: "Technical", color: "#8b5cf6", track: "rgba(139,92,246,0.18)" },
-  { key: "safety", label: "Safety", color: "#14b8a6", track: "rgba(20,184,166,0.18)" },
-  { key: "business", label: "Business", color: "#f59e0b", track: "rgba(245,158,11,0.18)" },
-];
+export type RiskTier = "high" | "medium" | "low";
 
-export type Training = Record<Category, { required: number; completed: number }>;
+export interface RiskItem {
+  tier: RiskTier;
+  category: string;
+  title: string;
+  detail: string;
+  affectedPeople: string[];
+  affectedItems: string[];
+  suggestedAction: string;
+}
 
-export type Module = {
-  id: string;
-  name: string;
-  category: Category;
+export interface PersonItem {
+  itemId: string;
+  itemName: string;
+  itemType: string;
+  curriculumId: string;
+  curriculumTitle: string;
+  assignmentType: string;
   completed: boolean;
-  completedAt?: string; // ISO date
-};
+  completionDate: string | null;
+  daysRemaining: number | null;
+  status:
+    | "completed-current"
+    | "completed-expired"
+    | "overdue"
+    | "due-soon"
+    | "incomplete";
+}
 
-export type OrgNode = {
-  id: string;
-  name: string;
-  type: "company" | "division" | "department" | "team" | "person";
-  role?: string;
-  children?: OrgNode[];
-  training?: Training; // only on persons (leaf)
-  modules?: Module[]; // only on persons (leaf)
-  manager?: OrgNode; // the person who owns this node (non-leaf only)
-};
+export interface Person {
+  studentId: number;
+  fullName: string;
+  jobCodeDescription: string;
+  jobTitle: string;
+  site: string;
+  isContractor: boolean;
+  hireDate: string | null;
+  assigned: number;
+  completed: number;
+  overdue: number;
+  dueSoon: number;
+  completionPct: number;
+  tnaSheets: string[];
+  tnaNameMatch: string;
+  tnaGap: number;
+  items: PersonItem[];
+  riskBadges: { high: number; medium: number; low: number };
+}
 
-const MODULE_NAMES: Record<Category, string[]> = {
-  people: [
-    "Inclusive Leadership",
-    "Giving Effective Feedback",
-    "Conflict Resolution Basics",
-    "Coaching for Managers",
-    "Unconscious Bias Awareness",
-    "Performance Conversations",
-    "Mental Health First Aid",
-    "Difficult Conversations",
-    "Team Psychological Safety",
-    "Remote Collaboration Essentials",
-    "Mentoring Skills",
-    "Active Listening",
-  ],
-  technical: [
-    "Secure Coding 101",
-    "Cloud Fundamentals",
-    "Incident Response Drill",
-    "Data Handling & Classification",
-    "API Design Principles",
-    "Version Control with Git",
-    "Observability & Monitoring",
-    "CI/CD Foundations",
-    "Database Best Practices",
-    "Accessibility (WCAG) Basics",
-    "Performance Engineering",
-    "Threat Modeling",
-  ],
-  safety: [
-    "Fire Safety Refresher",
-    "Ergonomics at the Desk",
-    "Hazard Reporting",
-    "Slips, Trips & Falls",
-    "Emergency Evacuation Procedures",
-    "Manual Handling",
-    "Electrical Safety Awareness",
-    "First Aid Essentials",
-    "Working at Heights",
-    "Driving for Work",
-    "PPE Usage",
-    "Lone Worker Safety",
-  ],
-  business: [
-    "Anti-Bribery & Corruption",
-    "Data Privacy (GDPR)",
-    "Financial Controls Overview",
-    "Code of Conduct",
-    "Information Security Awareness",
-    "Anti-Money Laundering",
-    "Procurement Ethics",
-    "Competition Law Basics",
-    "Records Management",
-    "Sanctions & Trade Compliance",
-    "Conflicts of Interest",
-    "Vendor Risk Management",
-  ],
-};
-
-
-export const CURRENT_USER_ID = "ceo-mickey";
-
-// ---- Demo data generator (deterministic) ----
-function rand(seed: number) {
-  let s = seed;
-  return () => {
-    s = (s * 9301 + 49297) % 233280;
-    return s / 233280;
+export interface AppData {
+  schemaVersion: string;
+  generated: { at: string; sfSnapshot: string; tnaSnapshot: string };
+  viewer: {
+    name: string;
+    studentId: number;
+    jobCode: string;
+    site: string;
+    organisation: string;
+    hireDate: string;
   };
-}
-
-function makePerson(id: string, name: string, role: string, seed: number): OrgNode {
-  const r = rand(seed);
-  const gen = (min: number, max: number) => Math.floor(min + r() * (max - min + 1));
-  const t: Training = {} as Training;
-  const modules: Module[] = [];
-  for (const c of CATEGORIES) {
-    const required = gen(4, 10);
-    const completed = Math.min(required, gen(1, required + 2));
-    t[c.key] = { required, completed };
-    const pool = MODULE_NAMES[c.key];
-    const offset = Math.floor(r() * pool.length);
-    for (let i = 0; i < required; i++) {
-      const name = pool[(offset + i) % pool.length];
-      const isDone = i < completed;
-      const daysAgo = Math.floor(r() * 120) + 1;
-      const d = new Date();
-      d.setDate(d.getDate() - daysAgo);
-      modules.push({
-        id: `${id}-${c.key}-${i}`,
-        name,
-        category: c.key,
-        completed: isDone,
-        completedAt: isDone ? d.toISOString() : undefined,
-      });
-    }
-  }
-  return { id, name, type: "person", role, training: t, modules };
-}
-
-const firstNames = ["Ava","Liam","Noah","Mia","Ethan","Zoe","Kai","Eli","Maya","Owen","Iris","Luca","Nora","Theo","Sage","Jude"];
-const lastNames = ["Reed","Chen","Patel","Kim","Singh","Lopez","Garcia","Khan","Walsh","Yamada","Brooks","Ortiz"];
-const roles = ["Engineer","Analyst","Manager","Specialist","Lead","Coordinator"];
-
-const mgrFirstNames = ["Diana","Marcus","Priya","Hideo","Sofia","Jamal","Elena","Wren","Rashid","Tomoko"];
-const mgrLastNames = ["Vance","Okafor","Sundaram","Tanaka","Marquez","Bennett","Petrov","Aldrich"];
-
-let seedCounter = 1;
-let mgrCounter = 0;
-function makeManager(nodeName: string, type: OrgNode["type"]): OrgNode {
-  const titleByType: Record<OrgNode["type"], string> = {
-    company: "CEO",
-    division: "VP",
-    department: "Director",
-    team: "Manager",
-    person: "",
+  team: { label: string; peopleCount: number; sites: string[] };
+  hardFacts: {
+    scope: string;
+    peopleCount: number;
+    distinctItemsAssigned: number;
+    totalAssignments: number;
+    completedAssignments: number;
+    incompleteAssignments: number;
+    overdueAssignments: number;
+    dueSoonAssignments: number;
+    completionPct: number;
   };
-  const fn = mgrFirstNames[mgrCounter % mgrFirstNames.length];
-  const ln = mgrLastNames[mgrCounter % mgrLastNames.length];
-  const id = `mgr-${mgrCounter}`;
-  mgrCounter++;
-  return makePerson(id, `${fn} ${ln}`, `${titleByType[type]}, ${nodeName}`, 7777 + mgrCounter);
+  inferredFacts: {
+    scope: string;
+    tnaRequiredItemsUnion: number;
+    tnaGapTotal: number;
+    tnaGapsByPerson: Record<string, number>;
+    confidence: "high" | "medium" | "low";
+    confidenceNotes: string[];
+    perPersonMatch: Record<string, string>;
+  };
+  risks: {
+    highCount: number;
+    mediumCount: number;
+    lowCount: number;
+    items: { high: RiskItem[]; medium: RiskItem[]; low: RiskItem[] };
+  };
+  people: Person[];
+  items: { itemId: string; itemName: string; itemType: string }[];
 }
 
-function team(name: string, size: number): OrgNode {
-  const people: OrgNode[] = [];
-  for (let i = 0; i < size; i++) {
-    const fn = firstNames[(seedCounter * 3 + i) % firstNames.length];
-    const ln = lastNames[(seedCounter * 7 + i) % lastNames.length];
-    const role = roles[(seedCounter + i) % roles.length];
-    people.push(makePerson(`p-${seedCounter}-${i}`, `${fn} ${ln}`, role, seedCounter * 100 + i));
-  }
-  seedCounter++;
-  return { id: `team-${seedCounter}`, name, type: "team", children: people, manager: makeManager(name, "team") };
+export const data = raw as unknown as AppData;
+
+export function getData(): AppData {
+  return data;
 }
 
-function dept(name: string, teams: OrgNode[]): OrgNode {
-  seedCounter++;
-  return { id: `dept-${seedCounter}`, name, type: "department", children: teams, manager: makeManager(name, "department") };
+export function getPersonById(id: number | string): Person | undefined {
+  const n = typeof id === "string" ? Number(id) : id;
+  return data.people.find((p) => p.studentId === n);
 }
 
-function division(name: string, depts: OrgNode[]): OrgNode {
-  seedCounter++;
-  return { id: `div-${seedCounter}`, name, type: "division", children: depts, manager: makeManager(name, "division") };
+export function getRisksByTier(tier: RiskTier): RiskItem[] {
+  return data.risks.items[tier] ?? [];
 }
 
-const CEO: OrgNode = makePerson(CURRENT_USER_ID, "Mickey Mouse", "CEO, Acme Corporation", 4242);
+export function sortPeopleByCompletion(people: Person[]): Person[] {
+  return [...people].sort((a, b) => a.completionPct - b.completionPct);
+}
 
-export const ORG: OrgNode = {
-  id: "company",
-  name: "Acme Corporation",
-  type: "company",
-  manager: CEO,
-  children: [
-    division("Engineering", [
-      dept("Platform", [team("Infrastructure", 6), team("Developer Experience", 5)]),
-      dept("Product Engineering", [team("Web", 7), team("Mobile", 5), team("Data", 4)]),
-    ]),
-    division("Operations", [
-      dept("Manufacturing", [team("Line A", 8), team("Line B", 7)]),
-      dept("Logistics", [team("Warehouse", 6), team("Fleet", 5)]),
-    ]),
-    division("Commercial", [
-      dept("Sales", [team("Enterprise", 5), team("SMB", 6)]),
-      dept("Marketing", [team("Brand", 4), team("Growth", 4)]),
-    ]),
-    division("Finance", [
-      dept("Accounting", [team("AP/AR", 5), team("Controllership", 4)]),
-      dept("FP&A", [team("Corporate FP&A", 4), team("Business Partners", 5)]),
-    ]),
-    division("Human Resources", [
-      dept("People Ops", [team("Talent Acquisition", 5), team("People Partners", 4)]),
-      dept("Learning & Development", [team("L&D Programs", 4), team("Compliance Training", 3)]),
-    ]),
-  ],
+export const TIER_META: Record<
+  RiskTier,
+  { label: string; icon: string; blurb: string; text: string; bg: string; border: string; ring: string }
+> = {
+  high: {
+    label: "HIGH-RISK",
+    icon: "🔴",
+    blurb: "Compliance gaps that could cause real failure if missed.",
+    text: "text-red-700 dark:text-red-300",
+    bg: "bg-red-50 dark:bg-red-950/30",
+    border: "border-red-200 dark:border-red-900",
+    ring: "#DC2626",
+  },
+  medium: {
+    label: "MEDIUM-RISK",
+    icon: "🟡",
+    blurb: "Process fragility — fix soon.",
+    text: "text-amber-700 dark:text-amber-300",
+    bg: "bg-amber-50 dark:bg-amber-950/30",
+    border: "border-amber-200 dark:border-amber-900",
+    ring: "#D97706",
+  },
+  low: {
+    label: "LOW-RISK",
+    icon: "🟢",
+    blurb: "Cumulative debt — fix steadily.",
+    text: "text-green-700 dark:text-green-300",
+    bg: "bg-green-50 dark:bg-green-950/30",
+    border: "border-green-200 dark:border-green-900",
+    ring: "#16A34A",
+  },
 };
 
-export function getManager(node: OrgNode): OrgNode | undefined {
-  return node.type === "person" ? node : node.manager;
-}
-
-// ---- Aggregation ----
-export function aggregate(node: OrgNode): Training {
-  if (node.training) return node.training;
-  const acc: Training = {
-    people: { required: 0, completed: 0 },
-    technical: { required: 0, completed: 0 },
-    safety: { required: 0, completed: 0 },
-    business: { required: 0, completed: 0 },
-  };
-  for (const child of node.children ?? []) {
-    const t = aggregate(child);
-    for (const c of CATEGORIES) {
-      acc[c.key].required += t[c.key].required;
-      acc[c.key].completed += t[c.key].completed;
-    }
-  }
-  return acc;
-}
-
-export function countPeople(node: OrgNode): number {
-  if (node.type === "person") return 1;
-  return (node.children ?? []).reduce((s, c) => s + countPeople(c), 0);
-}
-
-export function findPath(root: OrgNode, id: string, path: OrgNode[] = []): OrgNode[] | null {
-  const next = [...path, root];
-  if (root.id === id) return next;
-  for (const c of root.children ?? []) {
-    const found = findPath(c, id, next);
-    if (found) return found;
-  }
-  return null;
-}
-
-export function typeLabel(t: OrgNode["type"]) {
-  return { company: "Company", division: "Division", department: "Department", team: "Team", person: "Person" }[t];
-}
+export const CATEGORY_ICON: Record<string, string> = {
+  "validity-bug": "🛠",
+  "no-assignment": "🚫",
+  overdue: "⏰",
+  "coverage-gap": "↔️",
+  "name-typo": "✏️",
+  "cumulative-typos": "📚",
+};
