@@ -33,12 +33,16 @@ export interface RiskItem {
 }
 
 export interface Person {
-  studentId: number;
+  studentId: number | string;
   fullName: string;
   jobTitle: string;
   jobCodeDescription: string;
   site: string;
-  isContractor: boolean;
+  organisation: string;
+  personType: "Employee" | "Contractor";
+  contractorCompany: string | null;
+  contractorType: string | null;
+  isContractor?: boolean;
   hireDate: string | null;
   hasTeam: boolean;
   teamSize: number;
@@ -56,8 +60,11 @@ export interface Viewer {
   fullName: string;
   jobTitle: string;
   site: string;
+  organisation: string;
+  personType: "Employee" | "Contractor";
   hasTeam: boolean;
   teamSize: number;
+  teamComposition: { employees: number; contractors: number };
   personalStats: Stats;
   teamStats: Stats;
 }
@@ -107,8 +114,7 @@ export function getData(): AppData {
 }
 
 export function getPersonById(id: number | string): Person | undefined {
-  const n = typeof id === "string" ? Number(id) : id;
-  return data.people.find((p) => p.studentId === n);
+  return data.people.find((p) => String(p.studentId) === String(id));
 }
 
 export function getRisksByTier(tier: RiskTier): RiskItem[] {

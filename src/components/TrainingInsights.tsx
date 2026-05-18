@@ -1,28 +1,62 @@
-import { useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight, Info } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { ChevronLeft, ChevronRight, Info, SlidersHorizontal, X } from "lucide-react";
 import Ring from "./Ring";
 import PersonCard from "./PersonCard";
 import {
   data,
   effectiveStats,
   getPersonById,
-  getRisksByTier,
-  sortByCompletion,
-  TIER_META,
   type Person,
   type PersonItem,
-  type RiskTier,
   type Stats,
   type Viewer,
 } from "@/lib/training-data";
 
 type View =
-  | { kind: "team"; ownerId: number }
-  | { kind: "person"; studentId: number }
-  | { kind: "risk-list"; tier: RiskTier };
+  | { kind: "team"; ownerId: string }
+  | { kind: "person"; studentId: string };
+
+type Filters = {
+  site: string; // "all" or site name
+  org: string; // "all" or org name
+  type: "all" | "Employee" | "Contractor";
+};
+
+const DEFAULT_FILTERS: Filters = { site: "all", org: "all", type: "all" };
+
+function activeFilterCount(f: Filters): number {
+  let n = 0;
+  if (f.site !== "all") n++;
+  if (f.org !== "all") n++;
+  if (f.type !== "all") n++;
+  return n;
+}
+
+function applyFilters(people: Person[], f: Filters): Person[] {
+  return people.filter((p) => {
+    if (f.site !== "all" && p.site !== f.site) return false;
+    if (f.org !== "all" && p.organisation !== f.org) return false;
+    if (f.type !== "all" && p.personType !== f.type) return false;
+    return true;
+  });
+}
+
+function aggregateStats(people: Person[]): Stats {
+  const s = people.reduce(
+    (acc, p) => {
+      acc.assigned += p.personalStats.assigned;
+      acc.completed += p.personalStats.completed;
+      acc.incomplete += p.personalStats.incomplete;
+      return acc;
+    },
+    { assigned: 0, completed: 0, incomplete: 0, completionPct: 0 },
+  );
+  s.completionPct = s.assigned > 0 ? (s.completed / s.assigned) * 100 : 0;
+  return s;
+}
 
 type Owner = {
-  studentId: number;
+  studentId: string;
   fullName: string;
   jobTitle: string;
   site: string;
@@ -30,15 +64,15 @@ type Owner = {
   teamSize: number;
   teamStats: Stats | null;
   personalStats: Stats;
-  isContractor?: boolean;
+  personType?: "Employee" | "Contractor";
+  contractorCompany?: string | null;
   tnaNameMatch?: string;
   items?: PersonItem[];
-  riskBadges?: { high: number; medium: number; low: number };
 };
 
 function ownerFromViewer(v: Viewer): Owner {
   return {
-    studentId: v.studentId,
+    studentId: String(v.studentId),
     fullName: v.fullName,
     jobTitle: v.jobTitle,
     site: v.site,
@@ -46,12 +80,13 @@ function ownerFromViewer(v: Viewer): Owner {
     teamSize: v.teamSize,
     teamStats: v.teamStats,
     personalStats: v.personalStats,
+    personType: v.personType,
   };
 }
 
 function ownerFromPerson(p: Person): Owner {
   return {
-    studentId: p.studentId,
+    studentId: String(p.studentId),
     fullName: p.fullName,
     jobTitle: p.jobTitle,
     site: p.site,
@@ -59,85 +94,112 @@ function ownerFromPerson(p: Person): Owner {
     teamSize: p.teamSize,
     teamStats: p.teamStats,
     personalStats: p.personalStats,
-    isContractor: p.isContractor,
+    personType: p.personType,
+    contractorCompany: p.contractorCompany,
     tnaNameMatch: p.tnaNameMatch,
     items: p.items,
-    riskBadges: p.riskBadges,
   };
 }
 
-function resolveOwner(ownerId: number): Owner | null {
-  if (ownerId === data.viewer.studentId) return ownerFromViewer(data.viewer);
+function resolveOwner(ownerId: string): Owner | null {
+  if (ownerId === String(data.viewer.studentId)) return ownerFromViewer(data.viewer);
   const p = getPersonById(ownerId);
   return p ? ownerFromPerson(p) : null;
 }
 
 function crumbLabel(v: View): string {
   if (v.kind === "team") {
-    if (v.ownerId === data.viewer.studentId) return "Your team";
+    if (v.ownerId === String(data.viewer.studentId)) return "Your team";
     const o = resolveOwner(v.ownerId);
     return o ? `${o.fullName.split(" ")[0]}'s team` : "Team";
   }
-  if (v.kind === "person") {
-    const p = getPersonById(v.studentId);
-    return p ? p.fullName : "Person";
-  }
-  return `${TIER_META[v.tier].label} risks`;
+  const p = getPersonById(v.studentId);
+  return p ? p.fullName : "Person";
 }
 
 export default function TrainingInsights() {
   const [stack, setStack] = useState<View[]>([
-    { kind: "team", ownerId: data.viewer.studentId },
+    { kind: "team", ownerId: String(data.viewer.studentId) },
   ]);
-  const current = stack[stack.length - 1];
+  const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
+  const [filterOpen, setFilterOpen] = useState(false);
 
+  const current = stack[stack.length - 1];
   const push = (v: View) => setStack((s) => [...s, v]);
   const popTo = (i: number) => setStack((s) => s.slice(0, i + 1));
   const back = () => setStack((s) => (s.length > 1 ? s.slice(0, -1) : s));
 
+  const filterCount = activeFilterCount(filters);
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
       <div className="mx-auto max-w-screen-sm px-4 py-5">
-        <nav className="flex items-center gap-1 text-sm text-slate-400 mb-4 flex-wrap">
-          {stack.length > 1 && (
-            <button
-              onClick={back}
-              className="-ml-1 mr-1 p-1 rounded hover:bg-slate-900"
-              aria-label="Back"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </button>
-          )}
-          {stack.map((v, i) => {
-            const isLast = i === stack.length - 1;
-            return (
-              <span key={i} className="flex items-center gap-1 min-w-0">
-                {i > 0 && <ChevronRight className="h-3 w-3 shrink-0" />}
-                {isLast ? (
-                  <span className="text-slate-200 truncate max-w-[140px]">
-                    {crumbLabel(v)}
-                  </span>
-                ) : (
-                  <button
-                    onClick={() => popTo(i)}
-                    className="hover:text-slate-200 truncate max-w-[140px]"
-                  >
-                    {crumbLabel(v)}
-                  </button>
-                )}
+        <div className="flex items-center justify-between mb-4 gap-2">
+          <nav className="flex items-center gap-1 text-sm text-slate-400 flex-wrap min-w-0">
+            {stack.length > 1 && (
+              <button
+                onClick={back}
+                className="-ml-1 mr-1 p-1 rounded hover:bg-slate-900"
+                aria-label="Back"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+            )}
+            {stack.map((v, i) => {
+              const isLast = i === stack.length - 1;
+              return (
+                <span key={i} className="flex items-center gap-1 min-w-0">
+                  {i > 0 && <ChevronRight className="h-3 w-3 shrink-0" />}
+                  {isLast ? (
+                    <span className="text-slate-200 truncate max-w-[140px]">
+                      {crumbLabel(v)}
+                    </span>
+                  ) : (
+                    <button
+                      onClick={() => popTo(i)}
+                      className="hover:text-slate-200 truncate max-w-[140px]"
+                    >
+                      {crumbLabel(v)}
+                    </button>
+                  )}
+                </span>
+              );
+            })}
+          </nav>
+          <button
+            onClick={() => setFilterOpen(true)}
+            aria-label={`Filters${filterCount ? `, ${filterCount} active` : ""}`}
+            className="relative shrink-0 rounded-full border border-slate-800 bg-slate-900 p-2 min-h-[40px] min-w-[40px] inline-flex items-center justify-center"
+          >
+            <SlidersHorizontal className="h-4 w-4 text-slate-300" />
+            {filterCount > 0 && (
+              <span className="absolute -top-1 -right-1 text-[10px] font-medium bg-cyan-500 text-slate-950 rounded-full px-1.5 py-0.5 min-w-[18px] text-center">
+                {filterCount}
               </span>
-            );
-          })}
-        </nav>
+            )}
+          </button>
+        </div>
 
         {current.kind === "team" && (
-          <TeamView ownerId={current.ownerId} push={push} />
+          <TeamView ownerId={current.ownerId} push={push} filters={filters} />
         )}
-        {current.kind === "person" && (
-          <PersonView studentId={current.studentId} />
-        )}
-        {current.kind === "risk-list" && <RiskListView tier={current.tier} />}
+        {current.kind === "person" && <PersonView studentId={current.studentId} />}
       </div>
+
+      {filterOpen && (
+        <FilterSheet
+          filters={filters}
+          onClose={() => setFilterOpen(false)}
+          onApply={(f) => {
+            setFilters(f);
+            setFilterOpen(false);
+          }}
+          onClear={() => {
+            setFilters(DEFAULT_FILTERS);
+            setFilterOpen(false);
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -147,35 +209,55 @@ export default function TrainingInsights() {
 function TeamView({
   ownerId,
   push,
+  filters,
 }: {
-  ownerId: number;
+  ownerId: string;
   push: (v: View) => void;
+  filters: Filters;
 }) {
   const owner = resolveOwner(ownerId);
-  const isViewer = ownerId === data.viewer.studentId;
+  const isViewer = ownerId === String(data.viewer.studentId);
   const defaultMode: "team" | "individual" =
     owner?.hasTeam && owner.teamStats ? "team" : "individual";
   const [mode, setMode] = useState<"team" | "individual">(defaultMode);
   const [inferOpen, setInferOpen] = useState(false);
   const [notesOpen, setNotesOpen] = useState(false);
 
-  if (!owner) {
-    return <div className="text-slate-400">Owner not found.</div>;
-  }
+  const hasFilters = activeFilterCount(filters) > 0;
+  const filteredPeople = useMemo(
+    () => (isViewer ? applyFilters(data.people, filters) : data.people),
+    [isViewer, filters],
+  );
+  const sortedPeople = useMemo(
+    () =>
+      [...filteredPeople].sort(
+        (a, b) => effectiveStats(a).completionPct - effectiveStats(b).completionPct,
+      ),
+    [filteredPeople],
+  );
+
+  if (!owner) return <div className="text-slate-400">Owner not found.</div>;
 
   const canTeam = owner.hasTeam && owner.teamStats != null;
+
+  // Team stats: when filters active on viewer team, recompute from filtered people
+  const teamStats: Stats | null =
+    isViewer && hasFilters
+      ? aggregateStats(filteredPeople)
+      : owner.teamStats;
+
   const stats: Stats =
-    mode === "team" && canTeam ? (owner.teamStats as Stats) : owner.personalStats;
+    mode === "team" && teamStats ? teamStats : owner.personalStats;
 
   const firstName = owner.fullName.split(" ")[0];
   const sublabel =
     mode === "team"
-      ? `team of ${owner.teamSize}`
+      ? hasFilters && isViewer
+        ? `team of ${filteredPeople.length}`
+        : `team of ${owner.teamSize}`
       : isViewer
         ? "your training"
         : `${firstName}'s training`;
-
-  const people = useMemo(() => sortByCompletion(data.people), []);
 
   return (
     <>
@@ -189,11 +271,7 @@ function TeamView({
       </header>
 
       <div className="flex justify-center mt-4">
-        <ToggleSegment
-          value={mode}
-          onChange={setMode}
-          canTeam={canTeam}
-        />
+        <ToggleSegment value={mode} onChange={setMode} canTeam={canTeam} />
       </div>
 
       <div className="flex flex-col items-center py-5">
@@ -202,7 +280,9 @@ function TeamView({
           size={240}
           label={`${Math.round(stats.completionPct)}%`}
           sublabel={sublabel}
-          ariaLabel={`${mode === "team" ? "Team" : "Individual"} ${Math.round(stats.completionPct)}% complete`}
+          ariaLabel={`${mode === "team" ? "Team view" : "Individual view"}, ${Math.round(
+            stats.completionPct,
+          )}% complete, ${mode === "team" ? `${filteredPeople.length} people` : owner.fullName}`}
         />
       </div>
 
@@ -211,27 +291,12 @@ function TeamView({
         <BigStat value={stats.incomplete} label="incomplete" />
       </div>
 
-      {isViewer && (
-        <div className="mt-5 flex gap-2">
-          {(["high", "medium", "low"] as RiskTier[]).map((t) => {
-            const meta = TIER_META[t];
-            const count =
-              t === "high"
-                ? data.risks.highCount
-                : t === "medium"
-                  ? data.risks.mediumCount
-                  : data.risks.lowCount;
-            return (
-              <button
-                key={t}
-                onClick={() => push({ kind: "risk-list", tier: t })}
-                className={`flex-1 rounded-2xl border ${meta.border} ${meta.bg} px-3 py-3 min-h-[44px] text-sm ${meta.text}`}
-              >
-                <span aria-hidden className="mr-1">{meta.icon}</span>
-                {count} {meta.label}
-              </button>
-            );
-          })}
+      {isViewer && mode === "team" && data.viewer.teamComposition && (
+        <div className="mt-3 flex justify-center">
+          <span className="inline-flex items-center gap-2 rounded-full bg-slate-900 border border-slate-800 px-3 py-1 text-xs text-slate-400">
+            {data.viewer.teamComposition.employees} Employees ·{" "}
+            {data.viewer.teamComposition.contractors} Contractors
+          </span>
         </div>
       )}
 
@@ -265,11 +330,18 @@ function TeamView({
                   <div className="text-xs text-slate-400">total inferred gap</div>
                 </div>
               </div>
+              {filters.type === "Contractor" && (
+                <div className="rounded-xl border border-amber-800/60 bg-amber-950/40 text-amber-200 p-3 text-xs">
+                  Contractors are mostly outside the TNA framework — these numbers
+                  reflect what little can be inferred.
+                </div>
+              )}
               <button
                 onClick={() => setNotesOpen((v) => !v)}
                 className="inline-flex items-center gap-1 text-xs text-slate-400 hover:text-slate-200"
               >
-                <Info className="h-3.5 w-3.5" /> {notesOpen ? "Hide" : "Why this confidence?"}
+                <Info className="h-3.5 w-3.5" />{" "}
+                {notesOpen ? "Hide" : "Why this confidence?"}
               </button>
               {notesOpen && (
                 <ul className="space-y-1 text-xs text-slate-400">
@@ -287,21 +359,31 @@ function TeamView({
         <div className="mt-6">
           <h2 className="text-sm uppercase tracking-wide text-slate-500 mb-2">
             Team — worst first
+            {hasFilters && (
+              <span className="ml-2 normal-case text-slate-400">
+                ({filteredPeople.length} of {data.people.length})
+              </span>
+            )}
           </h2>
           <div className="space-y-2">
-            {people.map((p) => (
+            {sortedPeople.map((p) => (
               <PersonCard
-                key={p.studentId}
+                key={String(p.studentId)}
                 person={p}
                 onClick={() =>
                   push(
                     p.hasTeam
-                      ? { kind: "team", ownerId: p.studentId }
-                      : { kind: "person", studentId: p.studentId },
+                      ? { kind: "team", ownerId: String(p.studentId) }
+                      : { kind: "person", studentId: String(p.studentId) },
                   )
                 }
               />
             ))}
+            {sortedPeople.length === 0 && (
+              <div className="text-sm text-slate-500 text-center py-6">
+                No one matches these filters.
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -311,15 +393,15 @@ function TeamView({
 
 /* -------------------- PersonView -------------------- */
 
-function PersonView({ studentId }: { studentId: number }) {
+function PersonView({ studentId }: { studentId: string }) {
   const person = getPersonById(studentId);
-  if (!person) return <div className="text-slate-400">Person not found.</div>;
-
-  const canTeam = person.hasTeam && person.teamStats != null;
+  const canTeam = !!(person && person.hasTeam && person.teamStats != null);
   const [mode, setMode] = useState<"team" | "individual">(
     canTeam ? "team" : "individual",
   );
   const [filter, setFilter] = useState<"all" | "incomplete" | "completed">("all");
+
+  if (!person) return <div className="text-slate-400">Person not found.</div>;
 
   const stats: Stats =
     mode === "team" && canTeam ? (person.teamStats as Stats) : person.personalStats;
@@ -333,34 +415,36 @@ function PersonView({ studentId }: { studentId: number }) {
     return it.status === "completed";
   });
 
-  const personRisks: { tier: RiskTier; r: ReturnType<typeof getRisksByTier>[number] }[] = [];
-  (["high", "medium", "low"] as RiskTier[]).forEach((tier) => {
-    getRisksByTier(tier).forEach((r) => {
-      if (r.affectedPeople.includes(person.fullName)) personRisks.push({ tier, r });
-    });
-  });
-
+  const isContractor = person.personType === "Contractor";
   const tnaBanner =
     mode === "individual" && person.tnaNameMatch !== "exact"
       ? person.tnaNameMatch === "none"
-        ? "Not listed in any TNA. Showing actual assignments; can't infer what's required."
-        : `Spelled slightly differently in TNA (${person.tnaNameMatch}). Numbers may be approximate.`
+        ? "This person isn't listed on any TNA. Showing actual assignments; no inferred requirements."
+        : `Spelled slightly differently in the TNA (${person.tnaNameMatch}). Numbers may be approximate.`
       : null;
 
   return (
     <>
       <header className="mb-2">
-        <h1 className="text-xl font-semibold tracking-tight text-slate-100">
-          {person.fullName}
-          {person.isContractor && (
-            <span className="ml-2 inline-block rounded-full bg-slate-800 text-slate-300 px-2 py-0.5 text-xs align-middle">
-              Contractor
-            </span>
-          )}
+        <h1 className="text-xl font-semibold tracking-tight text-slate-100 flex items-center flex-wrap gap-2">
+          <span>{person.fullName}</span>
+          <span
+            className={`text-[10px] uppercase tracking-wide rounded-full px-1.5 py-0.5 bg-slate-800 ${
+              isContractor ? "text-slate-400" : "text-slate-300"
+            }`}
+          >
+            {isContractor ? "Contractor" : "Employee"}
+          </span>
         </h1>
         <div className="text-sm text-slate-400">
-          {person.jobTitle} · {person.site}
+          {person.jobTitle || (isContractor ? "Contractor" : "—")} · {person.site}
         </div>
+        {isContractor && person.contractorCompany && (
+          <div className="text-xs text-slate-500 mt-0.5">
+            {person.contractorCompany}
+            {person.contractorType ? ` · ${person.contractorType}` : ""}
+          </div>
+        )}
       </header>
 
       <div className="flex justify-center mt-4">
@@ -373,7 +457,9 @@ function PersonView({ studentId }: { studentId: number }) {
           size={240}
           label={`${Math.round(stats.completionPct)}%`}
           sublabel={sublabel}
-          ariaLabel={`${mode === "team" ? "Team" : "Individual"} ${Math.round(stats.completionPct)}% complete`}
+          ariaLabel={`${mode === "team" ? "Team" : "Individual"} ${Math.round(
+            stats.completionPct,
+          )}% complete`}
         />
       </div>
 
@@ -384,7 +470,6 @@ function PersonView({ studentId }: { studentId: number }) {
 
       {tnaBanner && (
         <div className="mt-4 rounded-2xl border border-amber-800/60 bg-amber-950/40 text-amber-200 p-3 text-sm">
-          <span className="font-medium">Match: {person.tnaNameMatch}.</span>{" "}
           {tnaBanner}
         </div>
       )}
@@ -415,32 +500,6 @@ function PersonView({ studentId }: { studentId: number }) {
                 Nothing here.
               </div>
             )}
-          </div>
-        </div>
-      )}
-
-      {personRisks.length > 0 && (
-        <div className="mt-6">
-          <h2 className="text-sm uppercase tracking-wide text-slate-500 mb-2">
-            Risk findings for this person
-          </h2>
-          <div className="space-y-2">
-            {personRisks.map(({ tier, r }, i) => {
-              const meta = TIER_META[tier];
-              return (
-                <div
-                  key={i}
-                  className={`rounded-2xl p-3 border border-slate-800 bg-slate-900`}
-                  style={{ borderLeftWidth: 4, borderLeftColor: meta.ring }}
-                >
-                  <div className={`text-sm font-medium ${meta.text}`}>
-                    <span aria-hidden className="mr-1">{meta.icon}</span>
-                    {r.title}
-                  </div>
-                  <div className="text-sm text-slate-300 mt-1">{r.detail}</div>
-                </div>
-              );
-            })}
           </div>
         </div>
       )}
@@ -483,7 +542,9 @@ function ItemRow({ it }: { it: PersonItem }) {
           </div>
           <div>
             <span className="text-slate-500">Completion:</span>{" "}
-            {it.completionDate ? new Date(it.completionDate).toLocaleDateString() : "—"}
+            {it.completionDate
+              ? new Date(it.completionDate).toLocaleDateString()
+              : "—"}
           </div>
           {it.daysRemaining != null && (
             <div>
@@ -496,88 +557,136 @@ function ItemRow({ it }: { it: PersonItem }) {
   );
 }
 
-/* -------------------- RiskListView -------------------- */
+/* -------------------- FilterSheet -------------------- */
 
-function RiskListView({ tier }: { tier: RiskTier }) {
-  const items = getRisksByTier(tier);
-  const meta = TIER_META[tier];
-  const categories = useMemo(() => {
+function FilterSheet({
+  filters,
+  onClose,
+  onApply,
+  onClear,
+}: {
+  filters: Filters;
+  onClose: () => void;
+  onApply: (f: Filters) => void;
+  onClear: () => void;
+}) {
+  const [draft, setDraft] = useState<Filters>(filters);
+  const sites = useMemo(() => {
     const s = new Set<string>();
-    items.forEach((i) => s.add(i.category));
-    return Array.from(s);
-  }, [items]);
-  const [cat, setCat] = useState<string | null>(null);
-  const filtered = cat ? items.filter((i) => i.category === cat) : items;
+    data.people.forEach((p) => p.site && s.add(p.site));
+    return Array.from(s).sort();
+  }, []);
+  const orgs = useMemo(() => {
+    const s = new Set<string>();
+    data.people.forEach((p) => p.organisation && s.add(p.organisation));
+    return Array.from(s).sort();
+  }, []);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
 
   return (
-    <>
-      <header className="mb-3">
-        <h1 className={`text-xl font-semibold tracking-tight ${meta.text}`}>
-          <span aria-hidden className="mr-2">{meta.icon}</span>
-          {items.length} {meta.label} findings
-        </h1>
-        <p className="text-sm text-slate-400 mt-1">{meta.blurb}</p>
-      </header>
-
-      {categories.length > 1 && (
-        <div className="flex gap-2 overflow-x-auto pb-2 -mx-1 px-1">
+    <div className="fixed inset-0 z-50 flex items-end justify-center">
+      <div
+        className="absolute inset-0 bg-black/60"
+        onClick={onClose}
+        aria-hidden
+      />
+      <div className="relative w-full max-w-screen-sm bg-slate-950 border-t border-slate-800 rounded-t-3xl p-5 pb-8 animate-in slide-in-from-bottom">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold text-slate-100">Filters</h2>
           <button
-            onClick={() => setCat(null)}
-            className={`shrink-0 rounded-full px-3 py-2 text-sm min-h-[36px] ${
-              cat === null
-                ? "bg-slate-100 text-slate-900"
-                : "bg-slate-900 text-slate-300 border border-slate-800"
-            }`}
+            onClick={onClose}
+            aria-label="Close filters"
+            className="p-2 rounded-full hover:bg-slate-900 min-h-[40px] min-w-[40px] inline-flex items-center justify-center"
           >
-            All
+            <X className="h-5 w-5 text-slate-400" />
           </button>
-          {categories.map((c) => (
-            <button
-              key={c}
-              onClick={() => setCat(c)}
-              className={`shrink-0 rounded-full px-3 py-2 text-sm min-h-[36px] ${
-                cat === c
-                  ? "bg-slate-100 text-slate-900"
-                  : "bg-slate-900 text-slate-300 border border-slate-800"
-              }`}
-            >
-              {c}
-            </button>
-          ))}
         </div>
-      )}
 
-      <div className="space-y-2 mt-3">
-        {filtered.map((r, i) => {
-          const affected = r.affectedPeople.slice(0, 3).join(", ");
-          const more = r.affectedPeople.length - 3;
-          return (
-            <div
-              key={i}
-              className="rounded-2xl bg-slate-900 border border-slate-800 p-4"
-              style={{ borderLeftWidth: 4, borderLeftColor: meta.ring }}
+        <div className="space-y-5">
+          <div>
+            <label className="block text-xs uppercase tracking-wide text-slate-500 mb-2">
+              Site
+            </label>
+            <select
+              value={draft.site}
+              onChange={(e) => setDraft({ ...draft, site: e.target.value })}
+              className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-3 text-slate-100 min-h-[44px]"
             >
-              <div className="text-xs uppercase tracking-wide text-slate-500">
-                {r.category}
-              </div>
-              <div className="font-medium text-slate-100 mt-0.5">{r.title}</div>
-              <div className="text-sm text-slate-300 mt-1">{r.detail}</div>
-              {r.affectedPeople.length > 0 && (
-                <div className="text-xs text-slate-400 mt-2">
-                  Affects: {affected}
-                  {more > 0 ? ` +${more} more` : ""}
-                </div>
-              )}
-              {r.suggestedAction && (
-                <div className="text-xs text-slate-300 mt-1">
-                  <span className="text-slate-500">Action:</span> {r.suggestedAction}
-                </div>
-              )}
+              <option value="all">All sites</option>
+              {sites.map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-xs uppercase tracking-wide text-slate-500 mb-2">
+              Organisation
+            </label>
+            <select
+              value={draft.org}
+              onChange={(e) => setDraft({ ...draft, org: e.target.value })}
+              className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-3 text-slate-100 min-h-[44px]"
+            >
+              <option value="all">All organisations</option>
+              {orgs.map((o) => (
+                <option key={o} value={o}>
+                  {o}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-xs uppercase tracking-wide text-slate-500 mb-2">
+              Type
+            </label>
+            <div className="inline-flex rounded-full bg-slate-900 border border-slate-800 p-1 w-full">
+              {(["all", "Employee", "Contractor"] as const).map((t) => {
+                const active = draft.type === t;
+                return (
+                  <button
+                    key={t}
+                    onClick={() => setDraft({ ...draft, type: t })}
+                    className={`flex-1 px-3 py-2 text-sm rounded-full min-h-[36px] transition-colors ${
+                      active
+                        ? "bg-slate-100 text-slate-900"
+                        : "text-slate-300"
+                    }`}
+                  >
+                    {t === "all" ? "All" : t === "Employee" ? "Employees" : "Contractors"}
+                  </button>
+                );
+              })}
             </div>
-          );
-        })}
+          </div>
+        </div>
+
+        <div className="mt-6 flex gap-2">
+          <button
+            onClick={onClear}
+            className="flex-1 rounded-2xl border border-slate-800 bg-slate-900 text-slate-200 font-medium py-3 min-h-[44px]"
+          >
+            Clear all
+          </button>
+          <button
+            onClick={() => onApply(draft)}
+            className="flex-1 rounded-2xl bg-cyan-500 text-slate-950 font-medium py-3 min-h-[44px]"
+          >
+            Apply
+          </button>
+        </div>
       </div>
-    </>
+    </div>
   );
 }
 
