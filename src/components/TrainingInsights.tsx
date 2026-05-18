@@ -251,11 +251,13 @@ function TeamView({
 }) {
   const owner = resolveOwner(ownerId);
   const isViewer = ownerId === String(data.viewer.studentId);
+  const ownerPerson = useMemo(() => getPersonById(ownerId), [ownerId]);
   const defaultMode: "team" | "individual" =
     owner?.hasTeam && owner.teamStats ? "team" : "individual";
   const [mode, setMode] = useState<"team" | "individual">(defaultMode);
   const [inferOpen, setInferOpen] = useState(false);
   const [notesOpen, setNotesOpen] = useState(false);
+  const [itemFilter, setItemFilter] = useState<"all" | "incomplete" | "completed">("all");
 
   const hasFilters = activeFilterCount(filters) > 0;
   const directReports = useMemo(() => getDirectReports(ownerId), [ownerId]);
