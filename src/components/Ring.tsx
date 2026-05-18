@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 
 interface RingProps {
-  pct: number; // 0-100
+  pct: number;
   size?: number;
   stroke?: number;
   label?: string;
@@ -27,6 +27,7 @@ export default function Ring({
   const c = 2 * Math.PI * r;
   const clamped = Math.max(0, Math.min(100, pct));
   const color = clamped < 50 ? "#F59E0B" : "#0EA5E9";
+  const filterId = useId().replace(/:/g, "");
 
   const reduced = prefersReducedMotion();
   const [animPct, setAnimPct] = useState(reduced ? clamped : 0);
@@ -41,6 +42,7 @@ export default function Ring({
   }, [clamped, reduced]);
 
   const offset = c * (1 - animPct / 100);
+  const cx = size / 2;
 
   return (
     <div
@@ -50,18 +52,51 @@ export default function Ring({
       aria-label={ariaLabel ?? `${Math.round(clamped)}% complete`}
     >
       <svg width={size} height={size} className="-rotate-90">
+        <defs>
+          <filter
+            id={`ring-glow-${filterId}`}
+            x="-50%"
+            y="-50%"
+            width="200%"
+            height="200%"
+          >
+            <feGaussianBlur stdDeviation={Math.max(2, size * 0.012)} />
+          </filter>
+        </defs>
         <circle
-          cx={size / 2}
-          cy={size / 2}
+          cx={cx}
+          cy={cx}
           r={r}
           fill="none"
           stroke="currentColor"
-          className="text-slate-200 dark:text-slate-800"
+          className="text-slate-800"
           strokeWidth={s}
         />
+        <g
+          filter={`url(#ring-glow-${filterId})`}
+          opacity={reduced ? 0 : 0.7}
+          style={{ transition: reduced ? "none" : "opacity 1.2s ease" }}
+        >
+          <circle
+            cx={cx}
+            cy={cx}
+            r={r}
+            fill="none"
+            stroke={color}
+            strokeWidth={s}
+            strokeLinecap="round"
+            strokeDasharray={c}
+            strokeDashoffset={offset}
+            style={{
+              transition: reduced
+                ? "none"
+                : "stroke-dashoffset 1.2s cubic-bezier(0.4,0,0.2,1)",
+            }}
+          />
+        </g>
         <circle
-          cx={size / 2}
-          cy={size / 2}
+          cx={cx}
+          cy={cx}
           r={r}
           fill="none"
           stroke={color}
@@ -77,17 +112,17 @@ export default function Ring({
         />
       </svg>
       {(label || sublabel) && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
+        <div className="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none">
           {label && (
             <div
-              className="font-semibold text-slate-900 dark:text-slate-50"
+              className="font-semibold text-slate-50"
               style={{ fontSize: Math.round(size * 0.22) }}
             >
               {label}
             </div>
           )}
           {sublabel && (
-            <div className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">
+            <div className="text-xs uppercase tracking-wide text-slate-400 mt-0.5 px-2">
               {sublabel}
             </div>
           )}
