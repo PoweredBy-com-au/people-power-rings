@@ -271,6 +271,11 @@ export default function OnboardingWizard({ onComplete }: { onComplete: () => voi
   );
 }
 
+export function isOnboardingDone(): boolean {
+  if (typeof window === "undefined") return false;
+  return localStorage.getItem(STORAGE_KEY) === "true";
+}
+
 export function useOnboarding() {
   const [mounted, setMounted] = useState(false);
   const [done, setDone] = useState(true);
