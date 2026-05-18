@@ -9,38 +9,75 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as RisksTierRouteImport } from './routes/risks.$tier'
+import { Route as PersonStudentIdRouteImport } from './routes/person.$studentId'
 
+const DashboardRoute = DashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RisksTierRoute = RisksTierRouteImport.update({
+  id: '/risks/$tier',
+  path: '/risks/$tier',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PersonStudentIdRoute = PersonStudentIdRouteImport.update({
+  id: '/person/$studentId',
+  path: '/person/$studentId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/dashboard': typeof DashboardRoute
+  '/person/$studentId': typeof PersonStudentIdRoute
+  '/risks/$tier': typeof RisksTierRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/dashboard': typeof DashboardRoute
+  '/person/$studentId': typeof PersonStudentIdRoute
+  '/risks/$tier': typeof RisksTierRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/dashboard': typeof DashboardRoute
+  '/person/$studentId': typeof PersonStudentIdRoute
+  '/risks/$tier': typeof RisksTierRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths: '/' | '/dashboard' | '/person/$studentId' | '/risks/$tier'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to: '/' | '/dashboard' | '/person/$studentId' | '/risks/$tier'
+  id: '__root__' | '/' | '/dashboard' | '/person/$studentId' | '/risks/$tier'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  DashboardRoute: typeof DashboardRoute
+  PersonStudentIdRoute: typeof PersonStudentIdRoute
+  RisksTierRoute: typeof RisksTierRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/dashboard': {
+      id: '/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof DashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -48,22 +85,29 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/risks/$tier': {
+      id: '/risks/$tier'
+      path: '/risks/$tier'
+      fullPath: '/risks/$tier'
+      preLoaderRoute: typeof RisksTierRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/person/$studentId': {
+      id: '/person/$studentId'
+      path: '/person/$studentId'
+      fullPath: '/person/$studentId'
+      preLoaderRoute: typeof PersonStudentIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  DashboardRoute: DashboardRoute,
+  PersonStudentIdRoute: PersonStudentIdRoute,
+  RisksTierRoute: RisksTierRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
