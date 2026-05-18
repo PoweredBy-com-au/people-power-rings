@@ -301,13 +301,14 @@ export default function TrainingInsights() {
             {path.length > 1 && (
               <button
                 onClick={() => setCurrentId(path[path.length - 2].id)}
-                className="group inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-4 py-1.5 text-xs uppercase tracking-widest text-white/70 hover:bg-white/10 hover:text-white hover:border-white/30 transition"
+                className="group inline-flex items-center gap-2 rounded-full border border-white/20 bg-white px-4 py-1.5 text-xs uppercase tracking-widest text-black hover:bg-white/90 transition"
                 aria-label={`Go back to ${path[path.length - 2].name}`}
               >
                 <span className="text-base leading-none transition group-hover:-translate-x-0.5">←</span>
                 <span>Go back to {path[path.length - 2].name}</span>
               </button>
             )}
+            <div className="text-sm font-medium text-white/90 text-center">{heroLabel}</div>
             <button
               type="button"
               onClick={() => {
