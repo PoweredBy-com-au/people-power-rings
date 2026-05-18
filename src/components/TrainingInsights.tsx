@@ -1,16 +1,22 @@
 import { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, Info, SlidersHorizontal, X } from "lucide-react";
+import { getRouteApi, useNavigate } from "@tanstack/react-router";
 import Ring from "./Ring";
 import PersonCard from "./PersonCard";
 import {
   data,
   effectiveStats,
   getPersonById,
+  getDirectReports,
+  getTeamCompositionFor,
+  aggregateInferredFor,
   type Person,
   type PersonItem,
   type Stats,
   type Viewer,
 } from "@/lib/training-data";
+
+const routeApi = getRouteApi("/");
 
 type View =
   | { kind: "team"; ownerId: string }
