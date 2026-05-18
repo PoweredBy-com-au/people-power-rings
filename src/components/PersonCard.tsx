@@ -8,8 +8,8 @@ interface Props {
 }
 
 export default function PersonCard({ person, onClick }: Props) {
-  const { high, medium, low } = person.riskBadges;
   const stats = effectiveStats(person);
+  const isContractor = person.personType === "Contractor";
   return (
     <button
       onClick={onClick}
@@ -23,17 +23,25 @@ export default function PersonCard({ person, onClick }: Props) {
           ariaLabel={`${person.fullName} ${Math.round(stats.completionPct)}% complete`}
         />
         <div className="min-w-0 flex-1">
-          <div className="font-medium truncate text-slate-100">{person.fullName}</div>
-          <div className="text-sm text-slate-400 truncate">{person.jobTitle}</div>
-          <div className="text-xs text-slate-500 truncate">{person.site}</div>
-          <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
-            {high > 0 && <span className="text-red-300">🔴 {high}</span>}
-            {medium > 0 && <span className="text-amber-300">🟡 {medium}</span>}
-            {low > 0 && <span className="text-green-300">🟢 {low}</span>}
-            {person.hasTeam && (
-              <span className="text-slate-400">{person.teamSize} reports</span>
-            )}
+          <div className="flex items-center gap-2">
+            <div className="font-medium truncate text-slate-100">{person.fullName}</div>
+            <span
+              className={`shrink-0 text-[10px] uppercase tracking-wide rounded-full px-1.5 py-0.5 ${
+                isContractor
+                  ? "bg-slate-800 text-slate-400"
+                  : "bg-slate-800 text-slate-300"
+              }`}
+            >
+              {isContractor ? "Con" : "Emp"}
+            </span>
           </div>
+          <div className="text-sm text-slate-400 truncate">
+            {person.jobTitle || (isContractor ? "Contractor" : "—")}
+          </div>
+          <div className="text-xs text-slate-500 truncate">{person.site}</div>
+          {person.hasTeam && (
+            <div className="mt-1 text-xs text-slate-400">↳ {person.teamSize} reports</div>
+          )}
         </div>
       </div>
     </button>

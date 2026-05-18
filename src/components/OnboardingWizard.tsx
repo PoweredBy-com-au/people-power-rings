@@ -1,5 +1,6 @@
-import { useState } from "react";
-import { data, getRisksByTier, type RiskTier } from "@/lib/training-data";
+import { useMemo, useState } from "react";
+import { data } from "@/lib/training-data";
+type RiskTier = "high" | "medium" | "low";
 
 const STORAGE_KEY = "onboarding-done";
 
