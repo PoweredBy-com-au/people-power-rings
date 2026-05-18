@@ -2,14 +2,11 @@ import raw from "@/data/dan_team_data.json";
 
 export type RiskTier = "high" | "medium" | "low";
 
-export interface RiskItem {
-  tier: RiskTier;
-  category: string;
-  title: string;
-  detail: string;
-  affectedPeople: string[];
-  affectedItems: string[];
-  suggestedAction: string;
+export interface Stats {
+  assigned: number;
+  completed: number;
+  incomplete: number;
+  completionPct: number;
 }
 
 export interface PersonItem {
@@ -22,56 +19,60 @@ export interface PersonItem {
   completed: boolean;
   completionDate: string | null;
   daysRemaining: number | null;
-  status:
-    | "completed-current"
-    | "completed-expired"
-    | "overdue"
-    | "due-soon"
-    | "incomplete";
+  status: "completed" | "incomplete";
+}
+
+export interface RiskItem {
+  tier: RiskTier;
+  category: string;
+  title: string;
+  detail: string;
+  affectedPeople: string[];
+  affectedItems: string[];
+  suggestedAction: string;
 }
 
 export interface Person {
   studentId: number;
   fullName: string;
-  jobCodeDescription: string;
   jobTitle: string;
+  jobCodeDescription: string;
   site: string;
   isContractor: boolean;
   hireDate: string | null;
-  assigned: number;
-  completed: number;
-  overdue: number;
-  dueSoon: number;
-  completionPct: number;
+  hasTeam: boolean;
+  teamSize: number;
+  teamStats: Stats | null;
+  personalStats: Stats;
+  items: PersonItem[];
   tnaSheets: string[];
   tnaNameMatch: string;
   tnaGap: number;
-  items: PersonItem[];
   riskBadges: { high: number; medium: number; low: number };
+}
+
+export interface Viewer {
+  studentId: number;
+  fullName: string;
+  jobTitle: string;
+  site: string;
+  hasTeam: boolean;
+  teamSize: number;
+  personalStats: Stats;
+  teamStats: Stats;
 }
 
 export interface AppData {
   schemaVersion: string;
+  demoMode: boolean;
+  anonymisationNote: string;
   generated: { at: string; sfSnapshot: string; tnaSnapshot: string };
-  viewer: {
-    name: string;
-    studentId: number;
-    jobCode: string;
-    site: string;
-    organisation: string;
-    hireDate: string;
-  };
-  team: { label: string; peopleCount: number; sites: string[] };
-  hardFacts: {
-    scope: string;
+  viewer: Viewer;
+  team: {
+    label: string;
     peopleCount: number;
-    distinctItemsAssigned: number;
-    totalAssignments: number;
-    completedAssignments: number;
-    incompleteAssignments: number;
-    overdueAssignments: number;
-    dueSoonAssignments: number;
-    completionPct: number;
+    sites: string[];
+    distinctItemsRequired: number;
   };
   inferredFacts: {
     scope: string;
@@ -81,6 +82,13 @@ export interface AppData {
     confidence: "high" | "medium" | "low";
     confidenceNotes: string[];
     perPersonMatch: Record<string, string>;
+  };
+  issuesSummary: {
+    totalIssues: number;
+    byTier: { high: number; medium: number; low: number };
+    byCategory: Record<string, number>;
+    topConcerns: string[];
+    description?: string;
   };
   risks: {
     highCount: number;
@@ -107,48 +115,53 @@ export function getRisksByTier(tier: RiskTier): RiskItem[] {
   return data.risks.items[tier] ?? [];
 }
 
-export function sortPeopleByCompletion(people: Person[]): Person[] {
-  return [...people].sort((a, b) => a.completionPct - b.completionPct);
+export function effectiveStats(p: Person): Stats {
+  return p.teamStats ?? p.personalStats;
+}
+
+export function sortByCompletion(people: Person[]): Person[] {
+  return [...people].sort(
+    (a, b) => effectiveStats(a).completionPct - effectiveStats(b).completionPct,
+  );
 }
 
 export const TIER_META: Record<
   RiskTier,
-  { label: string; icon: string; blurb: string; text: string; bg: string; border: string; ring: string }
+  {
+    label: string;
+    icon: string;
+    blurb: string;
+    text: string;
+    bg: string;
+    border: string;
+    ring: string;
+  }
 > = {
   high: {
-    label: "HIGH-RISK",
+    label: "High",
     icon: "🔴",
     blurb: "Compliance gaps that could cause real failure if missed.",
-    text: "text-red-700 dark:text-red-300",
-    bg: "bg-red-50 dark:bg-red-950/30",
-    border: "border-red-200 dark:border-red-900",
+    text: "text-red-300",
+    bg: "bg-red-950/40",
+    border: "border-red-800/60",
     ring: "#DC2626",
   },
   medium: {
-    label: "MEDIUM-RISK",
+    label: "Medium",
     icon: "🟡",
     blurb: "Process fragility — fix soon.",
-    text: "text-amber-700 dark:text-amber-300",
-    bg: "bg-amber-50 dark:bg-amber-950/30",
-    border: "border-amber-200 dark:border-amber-900",
+    text: "text-amber-300",
+    bg: "bg-amber-950/40",
+    border: "border-amber-800/60",
     ring: "#D97706",
   },
   low: {
-    label: "LOW-RISK",
+    label: "Low",
     icon: "🟢",
     blurb: "Cumulative debt — fix steadily.",
-    text: "text-green-700 dark:text-green-300",
-    bg: "bg-green-50 dark:bg-green-950/30",
-    border: "border-green-200 dark:border-green-900",
+    text: "text-green-300",
+    bg: "bg-green-950/40",
+    border: "border-green-800/60",
     ring: "#16A34A",
   },
-};
-
-export const CATEGORY_ICON: Record<string, string> = {
-  "validity-bug": "🛠",
-  "no-assignment": "🚫",
-  overdue: "⏰",
-  "coverage-gap": "↔️",
-  "name-typo": "✏️",
-  "cumulative-typos": "📚",
 };
