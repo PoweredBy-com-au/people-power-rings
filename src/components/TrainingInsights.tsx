@@ -249,14 +249,24 @@ function TeamView({
   ownerId,
   push,
   filters,
+  onBack,
 }: {
   ownerId: string;
   push: (v: View) => void;
   filters: Filters;
+  onBack?: () => void;
 }) {
   const owner = resolveOwner(ownerId);
   const isViewer = ownerId === String(data.viewer.studentId);
-  const ownerPerson = useMemo(() => getPersonById(ownerId), [ownerId]);
+  const ownerPerson = useMemo(() => {
+    const byId = getPersonById(ownerId);
+    if (byId) return byId;
+    if (isViewer) {
+      const name = data.viewer.fullName;
+      return data.people.find((p) => p.fullName === name);
+    }
+    return undefined;
+  }, [ownerId, isViewer]);
   const defaultMode: "team" | "individual" =
     owner?.hasTeam && owner.teamStats ? "team" : "individual";
   const [mode, setMode] = useState<"team" | "individual">(defaultMode);
