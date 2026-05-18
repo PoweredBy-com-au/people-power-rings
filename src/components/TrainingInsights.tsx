@@ -373,6 +373,18 @@ function TeamView({
         <BigStat value={stats.incomplete} label="incomplete" />
       </div>
 
+      {onBack && (
+        <div className="mt-4 flex justify-center">
+          <button
+            onClick={onBack}
+            className="inline-flex items-center gap-1.5 rounded-full bg-white text-slate-900 font-medium px-4 py-2 text-sm min-h-[36px] shadow-sm hover:bg-slate-100"
+          >
+            <ChevronLeft className="h-4 w-4" />
+            Back
+          </button>
+        </div>
+      )}
+
       {mode === "team" && canTeam && (composition.employees + composition.contractors > 0) && (
         <div className="mt-3 flex justify-center">
           <span className="inline-flex items-center gap-2 rounded-full bg-slate-900 border border-slate-800 px-3 py-1 text-xs text-slate-400">
