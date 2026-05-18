@@ -103,12 +103,29 @@ function makePerson(id: string, name: string, role: string, seed: number): OrgNo
   const r = rand(seed);
   const gen = (min: number, max: number) => Math.floor(min + r() * (max - min + 1));
   const t: Training = {} as Training;
+  const modules: Module[] = [];
   for (const c of CATEGORIES) {
     const required = gen(4, 10);
     const completed = Math.min(required, gen(1, required + 2));
     t[c.key] = { required, completed };
+    const pool = MODULE_NAMES[c.key];
+    const offset = Math.floor(r() * pool.length);
+    for (let i = 0; i < required; i++) {
+      const name = pool[(offset + i) % pool.length];
+      const isDone = i < completed;
+      const daysAgo = Math.floor(r() * 120) + 1;
+      const d = new Date();
+      d.setDate(d.getDate() - daysAgo);
+      modules.push({
+        id: `${id}-${c.key}-${i}`,
+        name,
+        category: c.key,
+        completed: isDone,
+        completedAt: isDone ? d.toISOString() : undefined,
+      });
+    }
   }
-  return { id, name, type: "person", role, training: t };
+  return { id, name, type: "person", role, training: t, modules };
 }
 
 const firstNames = ["Ava","Liam","Noah","Mia","Ethan","Zoe","Kai","Eli","Maya","Owen","Iris","Luca","Nora","Theo","Sage","Jude"];
