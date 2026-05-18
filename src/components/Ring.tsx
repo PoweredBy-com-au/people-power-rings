@@ -26,7 +26,9 @@ export default function Ring({
   const r = (size - s) / 2;
   const c = 2 * Math.PI * r;
   const clamped = Math.max(0, Math.min(100, pct));
-  const color = clamped < 50 ? "#F59E0B" : "#0EA5E9";
+  const incomplete = 100 - clamped;
+  const color =
+    incomplete > 20 ? "#DC2626" : incomplete >= 10 ? "#F59E0B" : "#16A34A";
   const filterId = useId().replace(/:/g, "");
 
   const reduced = prefersReducedMotion();
