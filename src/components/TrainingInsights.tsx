@@ -368,7 +368,7 @@ export default function TrainingInsights() {
 
         {/* Team view: drill-down children */}
         {!showIndividual && !isPersonFocus && children.length > 0 && (
-          <div className="space-y-3">
+          <div id="drilldown" className="space-y-3 scroll-mt-6">
             <div className="flex items-center justify-between">
               <h2 className="text-sm uppercase tracking-widest text-white/50">
                 {typeLabel((children[0].type as OrgNode["type"]))}s
