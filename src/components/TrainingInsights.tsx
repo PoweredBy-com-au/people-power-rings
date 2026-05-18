@@ -3,6 +3,7 @@ import {
   CATEGORIES,
   CURRENT_USER_ID,
   Category,
+  Module,
   ORG,
   OrgNode,
   Training,
@@ -163,6 +164,74 @@ function ModuleBreakdown({ training, title }: { training: Training; title: strin
           );
         })}
       </div>
+    </div>
+  );
+}
+
+function ModuleList({ modules }: { modules: Module[] }) {
+  const [filter, setFilter] = useState<"completed" | "incomplete">("completed");
+  const filtered = useMemo(
+    () => modules.filter((m) => (filter === "completed" ? m.completed : !m.completed)),
+    [modules, filter],
+  );
+  const completedCount = modules.filter((m) => m.completed).length;
+  const incompleteCount = modules.length - completedCount;
+
+  return (
+    <div className="rounded-2xl p-6 bg-white/5 border border-white/10">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+        <h2 className="text-sm uppercase tracking-widest text-white/50">Training modules</h2>
+        <ToggleGroup
+          type="single"
+          value={filter}
+          onValueChange={(v) => v && setFilter(v as "completed" | "incomplete")}
+          className="bg-white/5 border border-white/10 rounded-full p-1"
+        >
+          <ToggleGroupItem
+            value="completed"
+            className="rounded-full px-4 text-xs uppercase tracking-widest data-[state=on]:bg-white data-[state=on]:text-black text-white/60"
+          >
+            Completed · {completedCount}
+          </ToggleGroupItem>
+          <ToggleGroupItem
+            value="incomplete"
+            className="rounded-full px-4 text-xs uppercase tracking-widest data-[state=on]:bg-white data-[state=on]:text-black text-white/60"
+          >
+            Incomplete · {incompleteCount}
+          </ToggleGroupItem>
+        </ToggleGroup>
+      </div>
+
+      {filtered.length === 0 ? (
+        <div className="text-sm text-white/50 py-6 text-center">
+          {filter === "incomplete"
+            ? "All caught up — no incomplete modules."
+            : "No completed modules yet."}
+        </div>
+      ) : (
+        <ul className="divide-y divide-white/5">
+          {filtered.map((m) => {
+            const cat = CATEGORIES.find((c) => c.key === m.category)!;
+            return (
+              <li key={m.id} className="flex items-center gap-3 py-3">
+                <span
+                  className="h-2.5 w-2.5 rounded-full shrink-0"
+                  style={{ backgroundColor: cat.color, boxShadow: `0 0 10px ${cat.color}` }}
+                />
+                <div className="min-w-0 flex-1">
+                  <div className="text-sm font-medium truncate">{m.name}</div>
+                  <div className="text-xs text-white/40">{cat.label}</div>
+                </div>
+                <div className="text-xs text-white/50 tabular-nums shrink-0">
+                  {m.completed && m.completedAt
+                    ? `Completed · ${new Date(m.completedAt).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}`
+                    : "Not started"}
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
     </div>
   );
 }
@@ -443,7 +512,10 @@ export default function TrainingInsights() {
 
         {/* Person leaf focus */}
         {isPersonFocus && current.training && (
-          <ModuleBreakdown training={current.training} title="Module breakdown" />
+          <>
+            <ModuleBreakdown training={current.training} title="Module breakdown" />
+            {current.modules && <ModuleList modules={current.modules} />}
+          </>
         )}
       </div>
     </div>
