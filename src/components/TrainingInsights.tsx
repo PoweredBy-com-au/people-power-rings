@@ -127,13 +127,41 @@ export default function TrainingInsights() {
   const [stack, setStack] = useState<View[]>([
     { kind: "team", ownerId: String(data.viewer.studentId) },
   ]);
-  const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
   const [filterOpen, setFilterOpen] = useState(false);
+  const search = routeApi.useSearch();
+  const navigate = useNavigate({ from: "/" });
+
+  const filters: Filters = {
+    site: search.site,
+    org: search.org,
+    type: search.type,
+  };
+
+  const setFilters = (f: Filters) =>
+    navigate({
+      search: () => ({ site: f.site, org: f.org, type: f.type }),
+      replace: true,
+    });
+
+  const resetFilters = () =>
+    navigate({
+      search: () => ({ site: "all", org: "all", type: "all" as const }),
+      replace: true,
+    });
 
   const current = stack[stack.length - 1];
-  const push = (v: View) => setStack((s) => [...s, v]);
-  const popTo = (i: number) => setStack((s) => s.slice(0, i + 1));
-  const back = () => setStack((s) => (s.length > 1 ? s.slice(0, -1) : s));
+  const push = (v: View) => {
+    setStack((s) => [...s, v]);
+    resetFilters();
+  };
+  const popTo = (i: number) => {
+    setStack((s) => s.slice(0, i + 1));
+    resetFilters();
+  };
+  const back = () => {
+    setStack((s) => (s.length > 1 ? s.slice(0, -1) : s));
+    resetFilters();
+  };
 
   const filterCount = activeFilterCount(filters);
 
@@ -201,7 +229,7 @@ export default function TrainingInsights() {
             setFilterOpen(false);
           }}
           onClear={() => {
-            setFilters(DEFAULT_FILTERS);
+            resetFilters();
             setFilterOpen(false);
           }}
         />
