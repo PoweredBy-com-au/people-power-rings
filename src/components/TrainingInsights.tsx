@@ -308,17 +308,26 @@ export default function TrainingInsights() {
                 <span>Go back to {path[path.length - 2].name}</span>
               </button>
             )}
-            <div className="relative">
-              <StackedRings
-                training={heroTraining}
-                onRingClick={(c) => setActiveCategory((prev) => (prev === c ? null : c))}
-                activeCategory={activeCategory}
-              />
+            <button
+              type="button"
+              onClick={() => {
+                if (isPersonFocus) return;
+                document
+                  .getElementById("drilldown")
+                  ?.scrollIntoView({ behavior: "smooth", block: "start" });
+              }}
+              className="relative group rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+              aria-label={isPersonFocus ? current.name : `Show ${typeLabel((children[0]?.type ?? "team") as OrgNode["type"])}s under ${current.name}`}
+              style={{ cursor: isPersonFocus ? "default" : "pointer" }}
+            >
+              <div className="transition-transform duration-300 group-hover:scale-[1.02]">
+                <StackedRings training={heroTraining} />
+              </div>
               <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                 <span className="text-4xl font-semibold tabular-nums">{overallPct}%</span>
                 <span className="text-xs uppercase tracking-widest text-white/40">Completed</span>
               </div>
-            </div>
+            </button>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
