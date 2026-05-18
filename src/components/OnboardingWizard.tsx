@@ -82,13 +82,15 @@ export default function OnboardingWizard({ onComplete }: { onComplete: () => voi
             {previewTier && (
               <div className="rounded-2xl bg-slate-900 border border-slate-800 p-3 text-sm">
                 <div className="text-slate-400 text-xs mb-1 uppercase tracking-wide">
-                  Top {previewTier} findings
+                  Example {previewTier} patterns
                 </div>
                 <ul className="space-y-1">
-                  {getRisksByTier(previewTier)
+                  {Object.entries(issuesSummary.byCategory)
                     .slice(0, 3)
-                    .map((r, i) => (
-                      <li key={i} className="text-slate-200">• {r.title}</li>
+                    .map(([cat, n]) => (
+                      <li key={cat} className="text-slate-200">
+                        • {cat.replace(/-/g, " ")} ({n})
+                      </li>
                     ))}
                 </ul>
               </div>
@@ -119,10 +121,14 @@ export default function OnboardingWizard({ onComplete }: { onComplete: () => voi
             <p className="text-slate-300">
               Your ring shows your team's training as the default. Tap{" "}
               <span className="font-medium text-slate-100">Individual</span> to switch
-              to your own.
+              to your own. The same toggle works for every team member who supervises
+              others.
             </p>
             <p className="text-slate-300">
-              The same toggle works for every team member who supervises others.
+              Use the{" "}
+              <span className="font-medium text-slate-100">Filters icon</span> in the
+              top right to narrow by site, organisation, or Employee / Contractor —
+              the ring and team list recompute live.
             </p>
             <button
               onClick={next}
