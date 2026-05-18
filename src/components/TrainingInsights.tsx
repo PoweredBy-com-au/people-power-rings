@@ -3,6 +3,7 @@ import {
   CATEGORIES,
   CURRENT_USER_ID,
   Category,
+  Module,
   ORG,
   OrgNode,
   Training,
