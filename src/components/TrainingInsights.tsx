@@ -453,11 +453,46 @@ function TeamView({
           </div>
         </div>
       )}
+      {mode === "individual" && ownerPerson && (
+        <div className="mt-6">
+          <div className="flex gap-2">
+            {(["all", "incomplete", "completed"] as const).map((f) => (
+              <button
+                key={f}
+                onClick={() => setItemFilter(f)}
+                className={`shrink-0 rounded-full px-3 py-2 text-sm min-h-[36px] capitalize ${
+                  itemFilter === f
+                    ? "bg-slate-100 text-slate-900"
+                    : "bg-slate-900 text-slate-300 border border-slate-800"
+                }`}
+              >
+                {f}
+              </button>
+            ))}
+          </div>
+          <div className="mt-3 space-y-2">
+            {ownerPerson.items
+              .filter((it) =>
+                itemFilter === "all"
+                  ? true
+                  : itemFilter === "incomplete"
+                    ? it.status === "incomplete"
+                    : it.status === "completed",
+              )
+              .map((it, i) => (
+                <ItemRow key={i} it={it} />
+              ))}
+            {ownerPerson.items.length === 0 && (
+              <div className="text-sm text-slate-500 text-center py-6">
+                Nothing here.
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </>
   );
 }
-
-/* -------------------- PersonView -------------------- */
 
 function PersonView({ studentId }: { studentId: string }) {
   const person = getPersonById(studentId);
