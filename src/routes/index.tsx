@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import PasswordGate from "@/components/PasswordGate";
 import OnboardingWizard, { isOnboardingDone } from "@/components/OnboardingWizard";
 import TrainingInsights from "@/components/TrainingInsights";
+import DevResetButton from "@/components/DevResetButton";
 
 const FILTER_DEFAULTS = { site: "all", org: "all", type: "all" as const };
 
@@ -32,6 +33,7 @@ function App() {
       ) : (
         <OnboardingWizard onComplete={() => setDone(true)} />
       )}
+      <DevResetButton />
     </PasswordGate>
   );
 }
