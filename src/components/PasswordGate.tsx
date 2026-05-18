@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
-const STORAGE_KEY = "training_insights_unlocked";
+const STORAGE_KEY = "training_insights_unlocked_v2";
 const PASSWORD = "Gregisagoldengod";
 
 export default function PasswordGate({ children }: { children: React.ReactNode }) {
