@@ -22,8 +22,8 @@ import {
 type Filter = "all" | "overdue" | "dueSoon";
 
 function DashboardPage() {
-  const { search } = Route.useMatch();
-  const filter: Filter = ((search as { filter?: Filter }).filter ?? "all") as Filter;
+  const search = Route.useSearch();
+  const filter: Filter = (search.filter ?? "all") as Filter;
   const navigate = useNavigate({ from: "/dashboard" });
 
   const [hardOpen, setHardOpen] = useState(true);
@@ -63,18 +63,6 @@ function DashboardPage() {
             sublabel="complete"
             ariaLabel={`${Math.round(data.hardFacts.completionPct)}% complete, ${data.hardFacts.peopleCount} people`}
           />
-        </div>
-
-        <div className="flex gap-2 mt-2">
-          <StatTile
-            icon="🔴"
-            value={data.hardFacts.overdueAssignments}
-            label="overdue"
-            active={filter === "overdue"}
-          />
-          <button onClick={() => setFilter("overdue")} className="sr-only">
-            filter overdue
-          </button>
         </div>
 
         {/* Stat tiles row */}
