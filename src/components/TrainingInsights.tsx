@@ -443,7 +443,10 @@ export default function TrainingInsights() {
 
         {/* Person leaf focus */}
         {isPersonFocus && current.training && (
-          <ModuleBreakdown training={current.training} title="Module breakdown" />
+          <>
+            <ModuleBreakdown training={current.training} title="Module breakdown" />
+            {current.modules && <ModuleList modules={current.modules} />}
+          </>
         )}
       </div>
     </div>
