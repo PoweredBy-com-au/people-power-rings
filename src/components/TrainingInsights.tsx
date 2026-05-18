@@ -215,7 +215,12 @@ export default function TrainingInsights() {
         </div>
 
         {current.kind === "team" && (
-          <TeamView ownerId={current.ownerId} push={push} filters={filters} />
+          <TeamView
+            ownerId={current.ownerId}
+            push={push}
+            filters={filters}
+            onBack={stack.length > 1 ? back : undefined}
+          />
         )}
         {current.kind === "person" && <PersonView studentId={current.studentId} />}
       </div>
